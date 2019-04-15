@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+ 
+<p>This is the home page!</p>
+
+Featured Events:
+<br>
+Search:
+    <form id="search" method="POST" action={{ url_for("searchPosts") }}>
+        <input id="searchterm" placeholder="Search" name="searchterm">
+        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
+    </form>
+{% endblock %}

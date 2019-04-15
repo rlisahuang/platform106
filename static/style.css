@@ -1,0 +1,61 @@
+body {
+    font-family: Tahoma;
+}
+
+h1 {
+    color: mediumaquamarine;
+    font-family: 'Comic Sans MS';
+}
+
+.subhead{
+    font-weight: bolder;
+}
+
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: teal;
+}
+
+
+li {
+  float: left;
+}
+
+li a {
+  display: block;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+/* Change the link color to #111 (black) on hover */
+li a:hover {
+  background-color: lightseagreen;
+}
+
+table {
+  border-color: seagreen;
+}
+
+p {
+  color: navy;
+}
+
+#messages {
+  border: 3px solid red;
+  color: red;
+  font-size: large;
+	font-style: italic;
+	padding-left: 30px;
+}
+
+/*
+#messages { 
+    color: red;
+
+}
+*/

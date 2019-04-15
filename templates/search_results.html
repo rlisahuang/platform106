@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+
+    <table id="posts-list">
+        <tr>
+            <th>Title</th>
+            <th>Location</th>
+            <th>Event_Time</th>
+        </tr>
+        {% if posts %}
+        {% for post in posts %}
+        <tr data-pid={{ post.pid }}>
+            <td class="title">{{ post.title }}</td>
+            <td class="location">{{ post.location }}</td>
+            <td class="event_time">{{ post.event_time }}</td>
+        </tr>
+        {% endfor %}
+        {% endif %}
+    </table>
+
+{% endblock %}

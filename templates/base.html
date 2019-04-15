@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="author" content="Shrunothra">
+        <title>{{title}}</title>
+        <link rel="stylesheet" href="{{url_for('static',filename='style.css')}}" type="text/css" />
+
+        {% block headstuff %}
+        <ul>
+            <li><a href= '/'>Home</a></li>
+            <li><a href = '/general'>General Feed</a></li>
+            <li><a href = '/tagslist/'>Tags List</a></li>
+            <li><a href = {{ url_for("createPost") }}>Create Event</a></li>
+            <li><a href = '/portal/'>User Portal</a></li>
+        </ul>
+        {% endblock %}
+    </head>
+    <body>
+        <h1>{{title}}</h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div id="messages">
+                {% for msg in messages %}
+                    <p>{{msg}}</p>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}
+         
+        <article>
+            <p>Welcome to Platform 106.</p>
+            <p>Please use the tabs above to interact with our database.</p>
+            </article>
+         
+        {% endblock %}
+    </body>
+    <footer>
+        {% block footer %}
+        <br> &copy; 2019  
+        {% endblock %}
+    </footer>
+</html>
