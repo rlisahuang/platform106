@@ -18,35 +18,42 @@ def createPost():
     if request.method == 'GET':
         #blank form rendered when page is first visited
         return render_template('createPost.html', 
-                          title="Create a Post!")
+                          title="Create a Post!",post=session.get('newpost',None))
                           
     else:
         #flash warning messages if form is filled out incorrectly
-        if request.form.get('post-title') == "":
+        
+        title = request.form.get('post-title','')
+        content = request.form.get('post-content','')
+        location = request.form.get('post-location','')
+        event_time = request.form.get('post-eventtime','')
+        event_date = request.form.get('post-eventdate','')
+        
+        newpost = {"title":title,"content":content,"location":location,"event_time":event_time,"event_date":event_date}
+        session['newpost'] = newpost
+        
+        if title == "":
             flash('Missing value: Please enter a title for your event!')
             error = True
-        if request.form.get('post-location') == "":
+        if location == "":
             flash('Missing value: Please enter a location for your event!')
             error = True
-        if request.form.get('post-eventdate') == "":
+        if event_date == "":
             flash('Missing value: Please enter a date for your event!')
             error = True
-        if request.form.get('post-eventtime') == "":
+        if event_time == "":
             flash('Missing value: Please enter a time for your event!')
             error = True
         
         #test if any errors occured then take user back to insert page
         if error == True:
-            return render_template('createPost.html', title="Create a Post!")
-            
-        title = request.form.get('post-title')
-        content = request.form.get('post-content')
-        location = request.form.get('post-location')
-        event_time = request.form.get('post-eventtime')
-        event_date = request.form.get('post-eventdate')
+            return render_template('createPost.html', title="Create a Post!",post=session.get('newpost'))
         
         post = info.insertPost(conn, title, content, location, event_time, event_date)
-        return render_template('createPost.html', post=post)
+        print(post)
+        pid = post["pid"]
+        session.pop('newpost',None)
+        return redirect(url_for('createPost.html', pid=pid))
 
 # url for post page
 @app.route('/posts/<int:pid>')
@@ -54,43 +61,47 @@ def displayPost(pid):
     conn = info.getConn('c9')
     postInfo = info.readOnePost(conn,pid)
     
-    return render_template('post.html',postInfo=postInfo)
+    return render_template('post.html',post=postInfo)
 
 # url for simple search FORM
 @app.route('/basicSearch',methods=['POST'])
-def searchPosts():
+def basicSearch():
     title = ''
-    print(request.method)
     if request.method == 'POST':
         title = request.form.get('searchterm')
-        print("hello!!!")
-        # return redirect(url_for("searchResults",keyword=title))
-    elif request.method == 'GET':
-        print("oops")
+        session['keyword'] = title
+        session['tags'] = ''
 
-    return redirect(url_for("searchResults",keyword=title))
+        return redirect(url_for("searchResults"))
+        
+    return redirect(request.referrer)
 
 # url for advanced search FORM (in a search page)        
 @app.route('/advancedSearch',methods=['GET', 'POST'])
 def advancedSearch():
     if request.method == 'POST':
-        title = request.form.get('searchterm',None)
-        tags = request.form.get('tags',None)
+        title = request.form.get('searchterm','')
+        tags = request.form.get('searchtags','')
+        session['keyword'] = title
+        session['tags'] = tags
         # event time, location... more to follow
-    return redirect(url_for("searchResults",keyword=title,tags=tags))
+        return redirect(url_for("searchResults"))
+    return redirect(request.referrer)
 
 # url that hosts the advanced search form as well as search results    
 @app.route('/searchResults/')
-def searchResults(keyword,tags=''):
+def searchResults():
     # if keyword is not None or tags is not None:
+    
+    keyword = session.get('keyword','')
+    tags = session.get('tags','')
     conn = info.getConn('c9')
     posts = info.searchPosts(conn,keyword,tags)
     print(keyword)
-    print(posts)
+    
+    tagHolder = "enter tags separated by comma: e.g. cs, club" if (tags != '') else tags
 
-    return render_template('search_results.html',posts=posts)
-    # else:
-    #     return
+    return render_template('search_results.html',keyword=keyword,tags=tagHolder ,posts=posts)
 
 if __name__ == '__main__':
     app.debug = True

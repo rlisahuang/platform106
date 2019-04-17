@@ -5,11 +5,11 @@
  
 <p>This is the home page!</p>
 
-Featured Events:
+<p>Featured Events:</p>
 <br>
 Search:
-    <form id="search" method="POST" action={{ url_for("searchPosts") }}>
-        <input id="searchterm" placeholder="Search" name="searchterm">
+    <form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>
+        <input id="searchterm" placeholder="Search" name="searchterm"/>
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>
 {% endblock %}

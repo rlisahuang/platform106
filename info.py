@@ -54,8 +54,10 @@ def insertPost(conn, title, content, location, event_time, event_date):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     ts = time.time()
     timestamp = datetime.datetime.fromtimestamp(ts).strftime('%m-%d-%Y %H:%M:%S')
-    sql = "INSERT INTO posts (title, content, date_created, location, num_starred, imagefile, event_time, event_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-    val = (title, content, timestamp, location, 0, None, event_time)
+    sql = """INSERT INTO posts 
+    (title, content, date_created, location, num_starred, imagefile, event_time, event_date) 
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+    val = (title, content, timestamp, location, 0, None, event_time, event_date)
     return curs.execute(sql, val)
     
 def updatePost(conn, pid, title, content, location, num_starred, imagefile, event_time, event_date):
@@ -99,9 +101,7 @@ def searchPosts(conn,keyword='',tags=''):
                     inner join tags using (tid) 
                     where posts.title like %s and tags.tag_name in (%s)''', ["%"+keyword+"%",tags])
     else:
-        curs.execute('''select * from posts inner join tagged using (pid) 
-                    inner join tags using (tid) 
-                    where posts.title like %s''', ["%"+keyword+"%"])
+        curs.execute('''select * from posts where posts.title like %s''', ["%"+keyword+"%"])
                     
     all = curs.fetchall()
     for p in all:
@@ -110,3 +110,5 @@ def searchPosts(conn,keyword='',tags=''):
     
 if __name__ == '__main__':
     conn = getConn('c9')
+    posts = searchPosts(conn,keyword='f',tags='')
+    print(posts)

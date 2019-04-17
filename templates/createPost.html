@@ -5,21 +5,21 @@
  
 <p>Fill out this form to insert an event post:</p>
 
-<form method=post action="">
+<form method="POST" action="">
 
     <fieldset>
     <legend>Event Info</legend>
         <table>
         <tr><td><label for="post-title" accesskey="t">Event Name:</label></td>
-            <td><input type="text" name="post-title" id="post-title"></td></tr>
+            <td><input type="text" name="post-title" id="post-title" value="{{ post.title if post else '' }}"></td></tr>
         <tr><td><label for="post-content" accesskey="c">Description:</label></td>
-            <td><input type="text" name="post-content" id="post-content"></td></tr>
+            <td><input type="text" name="post-content" id="post-content" value="{{ post.content if post else '' }}"></td></tr>
         <tr><td><label for="post-location" accesskey="l">Location:</label></td>
-            <td><input type="text" name="post-location" id="post-location"></td></tr>
+            <td><input type="text" name="post-location" id="post-location" value="{{ post.location if post else '' }}"></td></tr>
         <tr><td><label for="post-eventdate" accesskey="d">Date:</label></td>
-            <td><input type="text" name="post-eventdate" id="post-eventdate"></td></tr>
+            <td><input type="text" name="post-eventdate" id="post-eventdate" value="{{ post.event_date if post else '' }}"></td></tr>
         <tr><td><label for="post-eventtime" accesskey="t">Time:</label></td>
-            <td><input type="text" name="post-eventtime" id="post-eventtime"></td></tr>
+            <td><input type="text" name="post-eventtime" id="post-eventtime" value="{{ post.event_time if post else '' }}"></td></tr>
         </table>
     </fieldset>
 
