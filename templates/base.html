@@ -9,10 +9,14 @@
         {% block headstuff %}
         <ul>
             <li><a href= '/'>Home</a></li>
-            <li><a href = '/general'>General Feed</a></li>
-            <li><a href = '/tagslist/'>Tags List</a></li>
+            <li><a href = {{ url_for("generalFeed") }}>General Feed</a></li>
+            <li><a href = {{ url_for("tagsList") }}>Tags List</a></li>
             <li><a href = {{ url_for("createPost") }}>Create Event</a></li>
-            <li><a href = '/portal/'>User Portal</a></li>
+            <li><a href = {{ url_for("userPortal") }} >User Portal</a></li>
+            <li><a href = {{ url_for("login") }} > Login </a></li>
+            <span class= "login">
+            <p>Hello, {{username}} </p> &nbsp;
+            </span>
         </ul>
         {% endblock %}
     </head>
@@ -37,6 +41,15 @@
             </article>
          
         {% endblock %}
+        
+        <script src="https://code.jquery.com/jquery.js"></script>
+        
+        {% block jquery_scripts %}
+        <script>
+        console.log('jQuery loaded');
+        </script>
+        {% endblock %}
+        
     </body>
     <footer>
         {% block footer %}

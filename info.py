@@ -54,7 +54,7 @@ def insertPost(conn, title, content, location, event_time, event_date):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     ts = time.time()
     timestamp = datetime.datetime.fromtimestamp(ts).strftime('%m-%d-%Y %H:%M:%S')
-    print(timestamp))
+    print(timestamp)
     # sql = """INSERT INTO posts 
     # (title, content, date_created, location, num_starred, imagefile, event_time, event_date) 
     # VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""

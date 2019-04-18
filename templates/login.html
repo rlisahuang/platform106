@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-    <!--wellesley drone video -->    
+   {# <!--wellesley drone video -->    
     <!--<video autoplay muted loop id="myVideo">-->
     <!--    <source src="../static/wellesleyminclip.mp4" type="video/mp4">-->
     <!--</video>-->
@@ -9,38 +9,46 @@
     <!--var video = document.getElementById("myVideo");-->
     <!--video.play();-->
     <!--</script>-->
+    #}
     
 {# replaces default content block #}
 {% block content %}
- 
+
+{# 
  <form id="search" method=POST action="{{url_for('search')}}">
         <input id="searchterm" placeholder="Search" name="searchterm">
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
 </form>
+#}
 
 <h1>Welcome to Platform 106</h1>
 
 <p>Please login using your Wellesley account information:</p>
+  
+ 
+<form id="joinform" action="{{url_for('join')}}" method="post">
+    <h2>Join</h2>
+    <p><label><input type="text" name="username" required pattern="^\w+$"> Username</label></p>
+    <p><label><input type="password" name="password1" required> Password </label></p>
+    <p><label><input type="password" name="password2" required> Password again </label></p>
+    <p><button type="submit">Register</button></p>
+</form>
+
     
-<!--<form id="joinform" action="{{url_for('join')}}" method="post">-->
-<!--    <h2>Join</h2>-->
-<!--    <p><label><input type="text" name="username" required pattern="^\w+$"> Username</label></p>-->
-<!--    <p><label><input type="password" name="password1" required> Password </label></p>-->
-<!--    <p><label><input type="password" name="password2" required> Password again </label></p>-->
-<!--    <p><button type="submit">Submit</button></p>-->
-<!--</form>-->
-    
-<form id="loginform" action="{{url_for('login')}}" method="post">
+<form id="loginform" action="{{url_for('loginAction')}}" method="post">
     <h2>Login</h2>
     <p><label>Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
     <p><label>Password: <input type="password" name="password" required></label></p>
-    <p><button type="submit">Submit</button></p>
+    <p><button type="submit">Login</button></p>
 </form>
 {% endblock %}
     
 
 {% block jquery_scripts %}
 <script>
+
+/* global $ */
+
 $("#joinform").on('submit', function (event) {
      var pw1 = $(this).find('[name=password1]').val();
      var pw2 = $(this).find('[name=password2]').val();

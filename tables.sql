@@ -12,6 +12,7 @@ drop table if exists tags;
 create table accounts (
     uid int auto_increment primary key,
     username varchar(30),
+    hashed varchar(60),
     isAdmin boolean
 );
 
