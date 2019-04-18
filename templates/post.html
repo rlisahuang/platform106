@@ -5,10 +5,11 @@
 
 {% if post %} 
 <p>Event name: {{ post.title }}</p>
-<p>{{ post.content }}</p>
-<p>{{ post.location }}</p>
-<p>{{ post.event_date }}</p>
-<p>{{ post.event_time }}</p>
-<p>{{ post.date_created }}</p>
+<p>Content: {{ post.content }}</p>
+<p>Location: {{ post.location }}</p>
+<p>Event date: {{ post.event_date }}</p>
+<p>Event time: {{ post.event_time }}</p>
+<p>Date created: {{ post.date_created }}</p>
+{% endif %}
 
 {% endblock %}

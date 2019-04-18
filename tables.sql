@@ -23,7 +23,7 @@ create table posts (
     location varchar(60),
     num_starred int unsigned,
     imagefile varchar(60),
-    event_time date NOT NULL,
+    event_time time NOT NULL,
     event_date date NOT NULL
 );
 

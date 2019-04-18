@@ -53,8 +53,8 @@ def insertPost(conn, title, content, location, event_time, event_date):
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     ts = time.time()
+    
     timestamp = datetime.datetime.fromtimestamp(ts).strftime('%m-%d-%Y %H:%M:%S')
-    print(timestamp))
     # sql = """INSERT INTO posts 
     # (title, content, date_created, location, num_starred, imagefile, event_time, event_date) 
     # VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
@@ -119,6 +119,6 @@ def searchPosts(conn,keyword='',tags=''):
 if __name__ == '__main__':
     conn = getConn('c9')
     posts = searchPosts(conn,keyword='f',tags='')
-    print(posts)
-    newpost = insertPost(conn,"testing_date_created", "testingfrompython", "tower", "5:55 pm", "2019-04-18")
+    newpost = insertPost(conn,"testing123", "testingfrompython", "tower", "", event_date)
+    newpost = insertPost(conn,"testing123", "testingfrompython", "tower", "5:55 pm", "2019-04-18")
     print(newpost)

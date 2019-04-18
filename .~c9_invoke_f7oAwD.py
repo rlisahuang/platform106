@@ -26,7 +26,7 @@ def createPost():
         title = request.form.get('post-title','')
         content = request.form.get('post-content','')
         location = request.form.get('post-location','')
-        event_time = request.form.get('post-eventtime','') #check if this works!:)
+        event_time = request.form.get('post-eventtime','') check 
         event_date = request.form.get('post-eventdate','')
         
         newpost = {"title":title,"content":content,"location":location,"event_time":event_time,"event_date":event_date}
@@ -51,9 +51,10 @@ def createPost():
         
         post = info.insertPost(conn, title, content, location, event_time, event_date)
         print(post)
-        pid = post["LAST_INSERT_ID()"]
+        pid = post["
+"]
         session.pop('newpost',None)
-        return redirect(url_for('displayPost', pid=pid))
+        return redirect(url_for('createPost.html', pid=pid))
 
 # url for post page
 @app.route('/posts/<int:pid>')
