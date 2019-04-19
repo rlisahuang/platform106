@@ -89,10 +89,10 @@ def createPost():
             return render_template('createPost.html', title="Create a Post!",post=newpost, logged_in=logged_in)
         else: 
             # ADD TAGS
-            post = info.insertPost(conn, title, content, location, event_time, event_date, tags)
-            print(post)
-            pid = post["LAST_INSERT_ID()"]
-            session.pop('newpost',None)
+            pid = info.insertPost(conn, title, content, location, event_time, event_date, tags)
+            # print(post)
+            # pid = post["LAST_INSERT_ID()"]
+            # session.pop('newpost',None)
             return redirect(url_for('displayPost', pid=pid))
 
 # url for post page
@@ -101,7 +101,7 @@ def displayPost(pid):
     conn = info.getConn('c9')
     postInfo = info.readOnePost(conn,pid)
     
-    return render_template('post.html',post=postInfo)
+    return render_template('post.html',post=postInfo,logged_in=session.get('logged_in',False))
 
 # url for simple search FORM
 @app.route('/basicSearch',methods=['POST'])

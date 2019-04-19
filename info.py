@@ -59,24 +59,26 @@ def insertPost(conn, title, content, location, event_time, event_date, tags):
     curs.execute("""INSERT INTO posts 
     (title, content, time_created, location, num_starred, imagefile, event_time, event_date) 
     VALUES (%s, %s, now(), %s, %s, %s, %s, %s)""", val)
-    print(tags)
-    
+
     curs.execute("""select LAST_INSERT_ID()""")
     previous_pid_dict = curs.fetchone()
     previous_pid = previous_pid_dict["LAST_INSERT_ID()"]
+    print(previous_pid)
     
     #inserting new tags into the tags table
     for tag in tags:
-        if (curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", [tag]) == 0):
-            print('im stopped here before 72')
+        curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", [tag])
+        tagExist = curs.fetchone().get("""EXISTS(SELECT 1 from tags where tag_name = '{}')""".format(tag))
+        if not tagExist:
             curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
             #new tags are not added - NOT WORKING
-    
-    print('im stopped here at 73')
-    
+            
     #linking the tag and post in the tagged table
     for tag in tags:
-        tag_id = curs.execute("""select tid from tags where tag_name = %s""", [tag])
+        print("78")
+        curs.execute("""select tid from tags where tag_name = %s""", [tag])
+        tag_id = curs.fetchone().get('tid')
+        print(tag_id)
         curs.execute("""INSERT INTO tagged (tid, pid) VALUES (%s, %s)""", (tag_id, previous_pid))
     
     return previous_pid
@@ -98,18 +100,12 @@ def readOnePost(conn,pid):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
         
     curs.execute('''select * from posts where pid = %s''',[pid])
-    return curs.fetchone()
-    
-# def searchPostsByKeyword(conn,keyword):
-#     ''' Function to return all posts containing the given keyword
-#         to be displayed in the post page
-#     '''
-#     curs = conn.cursor(MySQLdb.cursors.DictCursor)
-#     curs.execute('''select * from posts where title like %s''', ["%"+keyword+"%"])
-#     all = curs.fetchall()
-#     for p in all:
-#         row2utf8(p)
-#     return all
+    post = curs.fetchone()
+    if post:
+        curs.execute('''select * from tags inner join tagged on tags.tid =tagged.tid where tagged.pid=%s''',[pid])
+        tags = [tag.get('tag_name') for tag in curs.fetchall()]
+        post['tags'] = tags
+    return post
     
 def searchPosts(conn,keyword='',tags=''):
     ''' Function to return all posts containing the given keyword
@@ -131,7 +127,11 @@ def searchPosts(conn,keyword='',tags=''):
     
 if __name__ == '__main__':
     conn = getConn('c9')
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
     # posts = searchPosts(conn,keyword='f',tags='')
     # print(posts)
-    newpost = insertPost(conn,"testing_new_date_created", "testingfrompython", "tower", "5:01 pm", "2019-04-18")
-    print(newpost)
+    # newpost = insertPost(conn,"testing_new_date_created", "testingfrompython", "tower", "5:01 pm", "2019-04-18")
+    # print(newpost)
+    curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", ['hello'])
+    test = curs.fetchone()["""EXISTS(SELECT 1 from tags where tag_name = '%s')""",('hello')]
+    print(test)
