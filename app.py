@@ -14,7 +14,6 @@ def home():
 @app.route('/createPost', methods=['GET','POST'])
 def createPost():
     conn = info.getConn('c9')
-    error = False
     if request.method == 'GET':
         #blank form rendered when page is first visited
         return render_template('createPost.html', 
@@ -23,15 +22,17 @@ def createPost():
     else:
         #flash warning messages if form is filled out incorrectly
         
+        error = False
         title = request.form.get('post-title','')
         content = request.form.get('post-content','')
         location = request.form.get('post-location','')
         event_time = request.form.get('post-eventtime','') #check if this works!:)
         event_date = request.form.get('post-eventdate','')
+        tags = request.form.get('post-tags','')
         
-        newpost = {"title":title,"content":content,"location":location,"event_time":event_time,"event_date":event_date}
-        session['newpost'] = newpost
-        
+        newpost = {"title":title,"content":content,"location":location,
+                "event_time":event_time,"event_date":event_date, "tags":tags}
+
         if title == "":
             flash('Missing value: Please enter a title for your event!')
             error = True
@@ -46,14 +47,15 @@ def createPost():
             error = True
         
         #test if any errors occured then take user back to insert page
-        if error == True:
-            return render_template('createPost.html', title="Create a Post!",post=session.get('newpost'))
-        
-        post = info.insertPost(conn, title, content, location, event_time, event_date)
-        print(post)
-        pid = post["LAST_INSERT_ID()"]
-        session.pop('newpost',None)
-        return redirect(url_for('displayPost', pid=pid))
+        if error:
+            return render_template('createPost.html', title="Create a Post!",post=newpost)
+        else: 
+            # ADD TAGS
+            post = info.insertPost(conn, title, content, location, event_time, event_date)
+            print(post)
+            pid = post["LAST_INSERT_ID()"]
+            session.pop('newpost',None)
+            return redirect(url_for('displayPost', pid=pid))
 
 # url for post page
 @app.route('/posts/<int:pid>')
