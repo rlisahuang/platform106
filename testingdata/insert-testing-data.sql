@@ -1,14 +1,14 @@
 use c9;
 
-load data local infile 'accounts-data.csv' into table accounts
+/*load data local infile 'accounts-data.csv' into table accounts
     fields terminated by ','
     lines terminated by '\n'
-    (username,isAdmin);
+    (username,isAdmin);*/
     
 load data local infile 'posts-data.csv' into table posts
     fields terminated by ','
     lines terminated by '\n'
-    (title,content,date_created,location,num_starred,imagefile,event_time);
+    (title,content,time_created,location,num_starred,imagefile,event_time,event_date);
     
 load data local infile 'tags-data.csv' into table tags
     fields terminated by ','

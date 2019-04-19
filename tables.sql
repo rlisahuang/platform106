@@ -10,8 +10,7 @@ drop table if exists posts;
 drop table if exists tags;
 
 create table accounts (
-    uid int auto_increment primary key,
-    username varchar(30),
+    username varchar(30) primary key,
     hashed varchar(60),
     isAdmin boolean
 );
@@ -20,7 +19,7 @@ create table posts (
     pid int auto_increment primary key,
     title varchar(60) NOT NULL,
     content varchar(1000),
-    date_created date,
+    time_created datetime,
     location varchar(60),
     num_starred int unsigned,
     imagefile varchar(60),
@@ -45,32 +44,32 @@ create table tagged (
 
 create table starred (
     pid int NOT NULL,
-    uid int NOT NULL,
-    primary key (pid, uid),
+    username varchar(30) NOT NULL,
+    primary key (pid, username),
     foreign key (pid) references posts(pid) on delete restrict on update cascade,
-    foreign key (uid) references accounts(uid) on delete restrict on update cascade
+    foreign key (username) references accounts(username) on delete restrict on update cascade
 );
 
 create table posted (
     pid int NOT NULL,
-    uid int NOT NULL,
-    primary key (pid,uid),
+    username varchar(30) NOT NULL,
+    primary key (pid,username),
     foreign key (pid) references posts(pid) on delete restrict on update cascade,
-    foreign key (uid) references accounts(uid) on delete restrict on update cascade
+    foreign key (username) references accounts(username) on delete restrict on update cascade
 );
 
 create table followed (
     tid int NOT NULL,
-    uid int NOT NULL,
-    primary key (tid,uid),
+    username varchar(30) NOT NULL,
+    primary key (tid,username),
     foreign key (tid) references tags(tid) on delete restrict on update cascade,
-    foreign key (uid) references accounts(uid) on delete restrict on update cascade
+    foreign key (username) references accounts(username) on delete restrict on update cascade
 );
 
 create table isReported (
     pid int NOT NULL,
-    uid int NOT NULL,
-    primary key (pid,uid),
+    username varchar(30) NOT NULL,
+    primary key (pid,username),
     foreign key (pid) references posts(pid) on delete restrict on update cascade,
-    foreign key (uid) references accounts(uid) on delete restrict on update cascade
+    foreign key (username) references accounts(username) on delete restrict on update cascade
 );
