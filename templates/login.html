@@ -21,26 +21,28 @@
 </form>
 #}
 
-<h1>Welcome to Platform 106</h1>
-
 <p>Please login using your Wellesley account information:</p>
   
  
-<form id="joinform" action="{{url_for('join')}}" method="post">
+<form id="joinform" style="display: none;" action="{{url_for('join')}}" method="post">
     <h2>Join</h2>
-    <p><label><input type="text" name="username" required pattern="^\w+$"> Username</label></p>
-    <p><label><input type="password" name="password1" required> Password </label></p>
-    <p><label><input type="password" name="password2" required> Password again </label></p>
-    <p><button type="submit">Register</button></p>
+    <p><label>Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
+    <p><label>Password: <input type="password" name="password1" required></label></p>
+    <p><label>Password again: <input type="password" name="password2" required></label></p>
+    <p><button id="register-btn" type="submit">Register</button> 
+        <button type="" id="register2login">I have an account</button></p>
 </form>
 
     
-<form id="loginform" action="{{url_for('loginAction')}}" method="post">
+<form id="loginform" style="display: block;" action="{{url_for('loginAction')}}" method="post">
     <h2>Login</h2>
     <p><label>Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
     <p><label>Password: <input type="password" name="password" required></label></p>
-    <p><button type="submit">Login</button></p>
+    <p><button type="submit" id="login-btn">Login</button> 
+        <button type="" id="login2register">I don't have an account</button></p>
 </form>
+
+
 {% endblock %}
     
 
@@ -58,6 +60,17 @@ $("#joinform").on('submit', function (event) {
          alert("passwords don't match");
      }
 });
+
+$("#login2register").on('click',function(){
+    $("#joinform").show();
+    $("#loginform").hide();
+});
+
+$("#register2login").on('click',function(){
+    $("#loginform").show();
+    $("#joinform").hide();
+});
+
 </script>
 
 {% endblock %}

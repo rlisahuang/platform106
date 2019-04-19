@@ -21,7 +21,7 @@
         <tr><td><label for="post-eventtime" accesskey="t">Time:</label></td>
             <td><input type="time" name="post-eventtime" id="post-eventtime" value="{{ post.event_time if post else '' }}"></td></tr>
         <tr><td><label for="post-tags" accesskey="t">Tags:</label></td>
-            <td><input placeholder="{{ '' if post else 'tag1, tag2' }}"type="text" name="post-tags" id="post-tags" value="{{ post.tags if post else '' }}"></td></tr>
+            <td><input placeholder="{{ '' if post else 'tag1,tag2' }}"type="text" name="post-tags" id="post-tags" value="{{ post.tags if post else '' }}"></td></tr>
         </table>
     </fieldset>
 

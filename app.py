@@ -13,32 +13,49 @@ app.secret_key = 'draft'
 
 @app.route('/')
 def home():
-    return render_template('home.html', title="Home")
+    print(session)
+    return render_template('home.html', title="Home", logged_in=session.get('logged_in',False))
     
 @app.route('/login/')
 def login():
-    return render_template('login.html', title = "Login")
+    return render_template('login.html', title = "Login", logged_in=session.get('logged_in',False))
     
 @app.route('/tagsList')
 def tagsList():
-    return render_template('tagsList.html', title = "Tags List")
+    logged_in = session.get('logged_in', False)
+    if not logged_in:
+        flash("Please log in!")
+        return redirect(url_for("login"))
+    return render_template('tagsList.html', title = "Tags List", logged_in=logged_in)
     
 @app.route('/userPortal/')
 def userPortal():
-    return render_template('userPortal.html', title = "User Portal")
+    logged_in = session.get('logged_in', False)
+    if not logged_in:
+        flash("Please log in!")
+        return redirect(url_for("login"))
+    return render_template('userPortal.html', title = "User Portal", username=session.get('username'),logged_in=logged_in)
     
 @app.route('/generalFeed/')
 def generalFeed():
-    return render_template('generalFeed.html', title = "General Feed")
+    logged_in = session.get('logged_in', False)
+    if not logged_in:
+        flash("Please log in!")
+        return redirect(url_for("login"))
+    return render_template('generalFeed.html', title = "General Feed", logged_in=logged_in)
     
 #Builds the create post page
 @app.route('/createPost', methods=['GET','POST'])
 def createPost():
+    logged_in = session.get('logged_in', False)
+    if not logged_in:
+        flash("Please log in!")
+        return redirect(url_for("login"))
     conn = info.getConn('c9')
     if request.method == 'GET':
         #blank form rendered when page is first visited
         return render_template('createPost.html', 
-                          title="Create a Post!",post=session.get('newpost',None))
+                          title="Create a Post!",post=session.get('newpost',None), logged_in=logged_in)
                           
     else:
         #flash warning messages if form is filled out incorrectly
@@ -69,7 +86,7 @@ def createPost():
         
         #test if any errors occured then take user back to insert page
         if error:
-            return render_template('createPost.html', title="Create a Post!",post=newpost)
+            return render_template('createPost.html', title="Create a Post!",post=newpost, logged_in=logged_in)
         else: 
             # ADD TAGS
             post = info.insertPost(conn, title, content, location, event_time, event_date)
@@ -128,8 +145,6 @@ def searchResults():
     
 #--- Login User Below
 
-
-
 @app.route('/join/', methods=["POST"])
 def join():
     try:
@@ -152,7 +167,6 @@ def join():
                      [username, hashed])
         session['username'] = username
         session['logged_in'] = True
-        session['visits'] = 1
         return redirect( url_for('userPortal') )
     except Exception as err:
         flash('form submission error '+str(err))
@@ -178,7 +192,6 @@ def loginAction():
             flash('successfully logged in as '+username)
             session['username'] = username
             session['logged_in'] = True
-            session['visits'] = 1
             return redirect( url_for('userPortal') )
         else:
             flash('login incorrect. Try again or join')
@@ -187,41 +200,23 @@ def loginAction():
         flash('form submission error '+str(err))
         return redirect( url_for('login') )
 
-
-# @app.route('/user/<username>')
-# def user(username):
-#     try:
-#         # don't trust the URL; it's only there for decoration
-#         if 'username' in session:
-#             username = session['username']
-#             session['visits'] = 1+int(session['visits'])
-#             return render_template('greet.html',
-#                                   page_title='My App: Welcome '+username,
-#                                   name=username,
-#                                   visits=session['visits'])
-#         else:
-#             flash('you are not logged in. Please login or join')
-#             return redirect( url_for('index') )
-#     except Exception as err:
-#         flash('some kind of error '+str(err))
-#         return redirect( url_for('index') )
-
-# @app.route('/logout/')
-# def logout():
-#     try:
-#         if 'username' in session:
-#             username = session['username']
-#             session.pop('username')
-#             session.pop('logged_in')
-#             flash('You are logged out')
-#             return redirect(url_for('index'))
-#         else:
-#             flash('you are not logged in. Please login or join')
-#             return redirect( url_for('index') )
-#     except Exception as err:
-#         flash('some kind of error '+str(err))
-#         return redirect( url_for('index') )
+@app.route('/logout/')
+def logout():
+    try:
+        if 'username' in session:
+            username = session['username']
+            session.pop('username')
+            session.pop('logged_in')
+            flash('You are logged out')
+            return redirect(url_for('home'))
+        else:
+            flash('you are not logged in. Please login or join')
+            return redirect( url_for('login') )
+    except Exception as err:
+        flash('some kind of error '+str(err))
+        return redirect( url_for('login') )
 
 if __name__ == '__main__':
     app.debug = True
-    app.run('0.0.0.0',8080)
+    app.run('0.0.0.0',8081)
+    print(session)

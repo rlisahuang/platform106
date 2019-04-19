@@ -2,8 +2,13 @@
  
 {# replaces default content block #}
 {% block content %}
- 
-<p>This is the home page!</p>
+
+<h1>Welcome to Platform 106!</h1>
+{% if logged_in %}
+<p>Please use the tabs above to interact with our database.</p>
+{% else %}
+<p>Please log in to use the platform.</p>
+{% endif %}
 
 <p>Featured Events:</p>
 <br>

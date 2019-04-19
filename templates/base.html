@@ -8,15 +8,16 @@
 
         {% block headstuff %}
         <ul>
-            <li><a href= '/'>Home</a></li>
+            <li><a href= {{ url_for("home") }}>Home</a></li>
+            {% if logged_in %}
             <li><a href = {{ url_for("generalFeed") }}>General Feed</a></li>
             <li><a href = {{ url_for("tagsList") }}>Tags List</a></li>
             <li><a href = {{ url_for("createPost") }}>Create Event</a></li>
             <li><a href = {{ url_for("userPortal") }} >User Portal</a></li>
+            <li><a href = {{ url_for("logout") }} > Logout </a></li>
+            {% else %}
             <li><a href = {{ url_for("login") }} > Login </a></li>
-            <span class= "login">
-            <p>Hello, {{username}} </p> &nbsp;
-            </span>
+            {% endif %}
         </ul>
         {% endblock %}
     </head>
@@ -34,12 +35,6 @@
         {% endwith %}
         
         {% block content %}
-         
-        <article>
-            <p>Welcome to Platform 106.</p>
-            <p>Please use the tabs above to interact with our database.</p>
-            </article>
-         
         {% endblock %}
         
         <script src="https://code.jquery.com/jquery.js"></script>
