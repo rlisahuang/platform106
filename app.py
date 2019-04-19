@@ -1,3 +1,13 @@
+#!/usr/bin/python2.7
+'''
+Platform 106 -- Draft Version
+Authors: Lisa Huang, Shrunothra Ambati, Jocelyn Shiue
+Date: 04/19/2019
+
+app.py
+The main file of the app.
+'''
+
 from flask import (Flask, render_template, make_response, url_for, request,
                    redirect, flash, session, send_from_directory,jsonify)
 from werkzeug import secure_filename
@@ -13,7 +23,6 @@ app.secret_key = 'draft'
 
 @app.route('/')
 def home():
-    print(session)
     return render_template('home.html', title="Home", logged_in=session.get('logged_in',False))
     
 @app.route('/login/')
@@ -23,7 +32,7 @@ def login():
 @app.route('/tagsList')
 def tagsList():
     logged_in = session.get('logged_in', False)
-    if not logged_in:
+    if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
     return render_template('tagsList.html', title = "Tags List", logged_in=logged_in)
@@ -31,24 +40,16 @@ def tagsList():
 @app.route('/userPortal/')
 def userPortal():
     logged_in = session.get('logged_in', False)
-    if not logged_in:
+    if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
     return render_template('userPortal.html', title = "User Portal", username=session.get('username'),logged_in=logged_in)
-    
-@app.route('/generalFeed/')
-def generalFeed():
-    logged_in = session.get('logged_in', False)
-    if not logged_in:
-        flash("Please log in!")
-        return redirect(url_for("login"))
-    return render_template('generalFeed.html', title = "General Feed", logged_in=logged_in)
     
 #Builds the create post page
 @app.route('/createPost', methods=['GET','POST'])
 def createPost():
     logged_in = session.get('logged_in', False)
-    if not logged_in:
+    if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
     conn = info.getConn('c9')
@@ -64,7 +65,7 @@ def createPost():
         title = request.form.get('post-title','')
         content = request.form.get('post-content','')
         location = request.form.get('post-location','')
-        event_time = request.form.get('post-eventtime','') #check if this works!:)
+        event_time = request.form.get('post-eventtime','')
         event_date = request.form.get('post-eventdate','')
         tags = request.form.get('post-tags','').split(',')
         
@@ -84,36 +85,44 @@ def createPost():
             flash('Missing value: Please enter a time for your event!')
             error = True
         
-        #test if any errors occured then take user back to insert page
+        # test if any errors occured then take user back to insert page, with 
+        # the info that they already provided prefilled
         if error:
             return render_template('createPost.html', title="Create a Post!",post=newpost, logged_in=logged_in)
         else: 
-            # ADD TAGS
             pid = info.insertPost(conn, title, content, location, event_time, event_date, tags)
-            # print(post)
-            # pid = post["LAST_INSERT_ID()"]
-            # session.pop('newpost',None)
             return redirect(url_for('displayPost', pid=pid))
 
 # url for post page
 @app.route('/posts/<int:pid>')
 def displayPost(pid):
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
     conn = info.getConn('c9')
     postInfo = info.readOnePost(conn,pid)
-    
     return render_template('post.html',post=postInfo,logged_in=session.get('logged_in',False))
 
 # url for simple search FORM
+'''
+Potential Issue:
+So far, we are allowing users to search posts when they are not logged in. It is
+similar to the Wellesley Directory, where users are able to search for information
+without logging in, but they are not allowed to see too much detailed information
+in the search results. 
+'''
 @app.route('/basicSearch',methods=['POST'])
 def basicSearch():
     title = ''
+    
     if request.method == 'POST':
         title = request.form.get('searchterm')
+        # save the keyword and tags in session to be displayed in generalFeed
         session['keyword'] = title
         session['tags'] = ''
 
-        return redirect(url_for("searchResults"))
-        
+        return redirect(url_for("generalFeed"))
     return redirect(request.referrer)
 
 # url for advanced search FORM (in a search page)        
@@ -122,29 +131,29 @@ def advancedSearch():
     if request.method == 'POST':
         title = request.form.get('searchterm','')
         tags = request.form.get('searchtags','')
+        # save the keyword and tags in session to be displayed in generalFeed
         session['keyword'] = title
         session['tags'] = tags
+        
         # event time, location... more to follow
-        return redirect(url_for("searchResults"))
+        return redirect(url_for("generalFeed"))
     return redirect(request.referrer)
 
 # url that hosts the advanced search form as well as search results    
-@app.route('/searchResults/')
-def searchResults():
-    # if keyword is not None or tags is not None:
-    
+@app.route('/generalFeed/')
+def generalFeed():
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
     keyword = session.get('keyword','')
     tags = session.get('tags','')
     conn = info.getConn('c9')
     posts = info.searchPosts(conn,keyword,tags)
-    print(keyword)
-    
     tagHolder = "enter tags separated by comma: e.g. cs, club" if (tags != '') else tags
 
-    return render_template('search_results.html',keyword=keyword,tags=tagHolder ,posts=posts)
+    return render_template('generalFeed.html',title = "General Feed", keyword=keyword,tags=tagHolder,posts=posts,logged_in=session.get('logged_in',False))
     
-#--- Login User Below
-
 @app.route('/join/', methods=["POST"])
 def join():
     try:
@@ -183,7 +192,6 @@ def loginAction():
                      [username])
         row = curs.fetchone()
         if row is None:
-            # Same response as wrong password, so no information about what went wrong
             flash('login incorrect. Try again or join')
             return redirect( url_for('index'))
         hashed = row['hashed']

@@ -2,14 +2,35 @@
  
 {# replaces default content block #}
 {% block content %}
- 
-<p>This is the general feed page</p>
-
-<p>Featured Events:</p>
-<br>
-Search:
-    <form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>
-        <input id="searchterm" placeholder="Search" name="searchterm"/>
+    
+    <form id="advancedSearch" method="POST" action={{ url_for("advancedSearch") }}>
+        <label class="advancedSearch">Title: 
+        <input id="searchterm" placeholder="{{ keyword }}" name="searchterm"></label>
+        <label class="advancedSearch">Tags: 
+        <input id="searchterm" placeholder="{{ tags }}" name="searchtags"/>
+        </label>
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>
+    <br>
+    <table id="posts-list">
+        <tr>
+            <th>Title</th>
+            <th>Location</th>
+            <th>Event_Date</th>
+            <th>Event_Time</th>
+            <th>Event_Tags</th>
+        </tr>
+        {% if posts %}
+        {% for post in posts %}
+        <tr data-pid={{ post.pid }}>
+            <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td>
+            <td class="location">{{ post.location }}</td>
+            <td class="event_date">{{ post.event_date }}</td>
+            <td class="event_time">{{ post.event_time }}</td>
+            <td class="tags">{{ post.tags }}</td>
+        </tr>
+        {% endfor %}
+        {% endif %}
+    </table>
+
 {% endblock %}
