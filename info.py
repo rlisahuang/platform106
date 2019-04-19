@@ -49,7 +49,7 @@ def row2utf8(row):
 # Methods for getting information from, and updating the WMDB
 
 # DEAL WITH TAGS TONIGHT
-def insertPost(conn, title, content, location, event_time, event_date):
+def insertPost(conn, title, content, location, event_time, event_date, tags):
     '''Function to insert a new post into the database
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
@@ -57,10 +57,29 @@ def insertPost(conn, title, content, location, event_time, event_date):
     # date_created based on mysql's now() function, but it is UTC instead of
     # UTC-4 -- may have to fixed this later
     curs.execute("""INSERT INTO posts 
-    (title, content, date_created, location, num_starred, imagefile, event_time, event_date) 
+    (title, content, time_created, location, num_starred, imagefile, event_time, event_date) 
     VALUES (%s, %s, now(), %s, %s, %s, %s, %s)""", val)
+    print(tags)
+    
     curs.execute("""select LAST_INSERT_ID()""")
-    return curs.fetchone()
+    previous_pid_dict = curs.fetchone()
+    previous_pid = previous_pid_dict["LAST_INSERT_ID()"]
+    
+    #inserting new tags into the tags table
+    for tag in tags:
+        if (curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", [tag]) == 0):
+            print('im stopped here before 72')
+            curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
+            #new tags are not added - NOT WORKING
+    
+    print('im stopped here at 73')
+    
+    #linking the tag and post in the tagged table
+    for tag in tags:
+        tag_id = curs.execute("""select tid from tags where tag_name = %s""", [tag])
+        curs.execute("""INSERT INTO tagged (tid, pid) VALUES (%s, %s)""", (tag_id, previous_pid))
+    
+    return previous_pid
     
 def updatePost(conn, pid, title, content, location, num_starred, imagefile, event_time, event_date):
     '''Function to udpate a post already in the database
