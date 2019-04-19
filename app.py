@@ -66,7 +66,7 @@ def createPost():
         location = request.form.get('post-location','')
         event_time = request.form.get('post-eventtime','') #check if this works!:)
         event_date = request.form.get('post-eventdate','')
-        tags = request.form.get('post-tags','')
+        tags = request.form.get('post-tags','').split(',')
         
         newpost = {"title":title,"content":content,"location":location,
                 "event_time":event_time,"event_date":event_date, "tags":tags}
@@ -89,7 +89,7 @@ def createPost():
             return render_template('createPost.html', title="Create a Post!",post=newpost, logged_in=logged_in)
         else: 
             # ADD TAGS
-            post = info.insertPost(conn, title, content, location, event_time, event_date)
+            post = info.insertPost(conn, title, content, location, event_time, event_date, tags)
             print(post)
             pid = post["LAST_INSERT_ID()"]
             session.pop('newpost',None)
