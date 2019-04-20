@@ -1,0 +1,791 @@
+#!/usr/bin/python2.7
+'''
+Platform 106 -- Draft Version
+Authors: Lisa Huang, Shrunothra Ambati, Jocelyn Shiue
+Date: 04/19/2019
+
+app.py
+The main file of the app.
+'''
+
+from flask import (Flask, render_template, make_response, url_for, request,
+                   redirect, flash, session, send_from_directory,jsonify)
+from werkzeug import secure_filename
+app = Flask(__name__)
+
+import info
+import sys,os
+import bcrypt
+import MySQLdb
+
+app = Flask(__name__)
+app.secret_key = 'draft'
+
+@app.route('/')
+def home():
+    return render_template('home.html', title="Home", logged_in=session.get('logged_in',False))
+    
+@app.route('/login/')
+def login():
+    return render_template('login.html', title = "Login", logged_in=session.get('logged_in',False))
+    
+@app.route('/tagsList')
+def tagsList():
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
+    return render_template('tagsList.html', title = "Tags List", logged_in=logged_in)
+    
+@app.route('/userPortal/')
+def userPortal():
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
+    return render_template('userPortal.html', title = "User Portal", username=session.get('username'),logged_in=logged_in)
+    
+#Builds the create post page
+@app.route('/createPost', methods=['GET','POST'])
+def createPost():
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
+    conn = info.getConn('c9')
+    if request.method == 'GET':
+        #blank form rendered when page is first visited
+        return render_template('createPost.html', 
+                          title="Create a Post!",post=session.get('newpost',None), logged_in=logged_in)
+                          
+    else:
+        #flash warning messages if form is filled out incorrectly
+        
+        error = False
+        title = request.form.get('post-title','')
+        content = request.form.get('post-content','')
+        location = request.form.get('post-location','')
+        event_time = request.form.get('post-eventtime','')
+        event_date = request.form.get('post-eventdate','')
+        tags = request.form.get('post-tags','').split(',')
+        
+        newpost = {"title":title,"content":content,"location":location,
+                "event_time":event_time,"event_date":event_date, "tags":tags}
+
+        if title == "":
+            flash('Missing value: Please enter a title for your event!')
+            error = True
+        if location == "":
+            flash('Missing value: Please enter a location for your event!')
+            error = True
+        if event_date == "":
+            flash('Missing value: Please enter a date for your event!')
+            error = True
+        if event_time == "":
+            flash('Missing value: Please enter a time for your event!')
+            error = True
+        
+        # test if any errors occured then take user back to insert page, with 
+        # the info that they already provided prefilled
+        if error:
+            return render_template('createPost.html', title="Create a Post!",post=newpost, logged_in=logged_in)
+        else: 
+            pid = info.insertPost(conn, title, content, location, event_time, event_date, tags)
+            return redirect(url_for('displayPost', pid=pid))
+
+# url for post page
+@app.route('/posts/<int:pid>')
+def displayPost(pid):
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
+    conn = info.getConn('c9')
+    postInfo = info.readOnePost(conn,pid)
+    return render_template('post.html',post=postInfo,logged_in=session.get('logged_in',False))
+
+# url for simple search FORM
+'''
+Potential Issue:
+So far, we are allowing users to search posts when they are not logged in. It is
+similar to the Wellesley Directory, where users are able to search for information
+without logging in, but they are not allowed to see too much detailed information
+in the search results. 
+'''
+@app.route('/basicSearch',methods=['POST'])
+def basicSearch():
+    title = ''
+    
+    if request.method == 'POST':
+        title = request.form.get('searchterm')
+        # save the keyword and tags in session to be displayed in generalFeed
+        session['keyword'] = title
+        session['tags'] = ''
+
+        return redirect(url_for("generalFeed"))
+    return redirect(request.referrer)
+
+# url for advanced search FORM (in a search page)        
+@app.route('/advancedSearch',methods=['GET', 'POST'])
+def advancedSearch():
+    if request.method == 'POST':
+        title = request.form.get('searchterm','')
+        tags = request.form.get('searchtags','')
+        # save the keyword and tags in session to be displayed in generalFeed
+        session['keyword'] = title
+        session['tags'] = tags
+        
+        # event time, location... more to follow
+        return redirect(url_for("generalFeed"))
+    return redirect(request.referrer)
+
+# url that hosts the advanced search form as well as search results    
+@app.route('/generalFeed/')
+def generalFeed():
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
+    keyword = session.get('keyword','')
+    tags = session.get('tags','')
+    conn = info.getConn('c9')
+    posts = info.searchPosts(conn,keyword,tags)
+    tagHolder = "enter tags separated by comma: e.g. cs, club" if (tags != '') else tags
+
+    return render_template('generalFeed.html',title = "General Feed", keyword=keyword,tags=tagHolder,posts=posts,logged_in=session.get('logged_in',False))
+    
+@app.route('/join/', methods=["POST"])
+def join():
+    try:
+        username = request.form['username']
+        passwd1 = request.form['password1']
+        passwd2 = request.form['password2']
+        if passwd1 != passwd2:
+            flash('passwords do not match')
+            return redirect( url_for('index'))
+        hashed = bcrypt.hashpw(passwd1.encode('utf-8'), bcrypt.gensalt())
+        conn = info.getConn('c9')
+        curs = conn.cursor(MySQLdb.cursors.DictCursor)
+        curs.execute('SELECT username FROM accounts WHERE username = %s',
+                     [username])
+        row = curs.fetchone()
+        if row is not None:
+            flash('That username is taken')
+            return redirect( url_for('login') )
+        curs.execute('INSERT into accounts(username,hashed) VALUES(%s,%s)',
+                     [username, hashed])
+        session['username'] = username
+        session['logged_in'] = True
+        return redirect( url_for('userPortal') )
+    except Exception as err:
+        flash('form submission error '+str(err))
+        return redirect( url_for('login') )
+        
+@app.route('/loginAction/', methods=["POST"])
+def loginAction():
+    try:
+        username = request.form['username']
+        passwd = request.form['password']
+        conn = info.getConn('c9')
+        curs = conn.cursor(MySQLdb.cursors.DictCursor)
+        curs.execute('SELECT hashed FROM accounts WHERE username = %s',
+                     [username])
+        row = curs.fetchone()
+        if row is None:
+            flash('login incorrect. Try again or join')
+            return redirect( url_for('index'))
+        hashed = row['hashed']
+        # strings always come out of the database as unicode objects
+        if bcrypt.hashpw(passwd.encode('utf-8'),hashed.encode('utf-8')) == hashed:
+            flash('successfully logged in as '+username)
+            session['username'] = username
+            session['logged_in'] = True
+            return redirect( url_for('userPortal') )
+        else:
+            flash('login incorrect. Try again or join')
+            return redirect( url_for('login'))
+    except Exception as err:
+        flash('form submission error '+str(err))
+        return redirect( url_for('login') )
+
+@app.route('/logout/')
+def logout():
+    try:
+        if 'username' in session:
+            username = session['username']
+            session.pop('username')
+            session.pop('logged_in')
+            flash('You are logged out')
+            return redirect(url_for('home'))
+        else:
+            flash('you are not logged in. Please login or join')
+            return redirect( url_for('login') )
+    except Exception as err:
+        flash('some kind of error '+str(err))
+        return redirect( url_for('login') )
+
+if __name__ == '__main__':
+    app.debug = True
+    app.run('0.0.0.0',8081)
+    print(session)
+#!/usr/bin/python2.7
+'''
+Platform 106 -- Draft Version
+Authors: Lisa Huang, Shrunothra Ambati, Jocelyn Shiue
+Date: 04/19/2019
+
+info.py
+File that contains functions for the backend.
+'''
+
+import sys
+import MySQLdb
+import time
+import datetime
+
+def getConn(db):
+    conn = MySQLdb.connect(host='localhost',
+                           user='ubuntu',
+                           passwd='',
+                           db=db)
+    conn.autocommit(True)
+    conn.set_character_set('utf8')
+    curs = conn.cursor()
+    curs.execute('set names utf8;')
+    curs.execute('set character set utf8;')
+    curs.execute('set character_set_connection=utf8;')
+    return conn
+    
+#-------------------------------------------------------------------------------
+# Methods needed for string character conversions
+
+def utf8(val):
+    return unicode(val,'utf8') if type(val) is str else val
+
+def dict2utf8(dic):
+    '''Because dictionaries are mutable,
+    this mutates the dictionary;
+    it also returns it'''
+    for k,v in dic.iteritems():
+        dic[k] = utf8(v)
+    return dic
+
+def tuple2utf8(tup):
+    '''returns a new tuple, with byte strings
+converted to unicode strings'''
+    return tuple(map(utf8,tup))
+    
+def row2utf8(row):
+    if type(row) is tuple:
+        return tuple2utf8(row)
+    elif type(row) is dict:
+        return dict2utf8(row)
+    else:
+        raise TypeError('row is of unhandled type')
+
+#-------------------------------------------------------------------------------
+# Methods for getting information from, and updating the WMDB
+
+def insertPost(conn, title, content, location, event_time, event_date, tags):
+    '''
+    Function that inserts a new post into the database and establish post-tag 
+    relationships if given any tags.
+    
+    Potential Problem:
+        1) The current implementation of the function assumes that titles are not 
+    unique and does not prevent the user from creating a post with exactly the 
+    same title and content as any existing post.
+        2) the empty tag is considered as valid and could be inserted into the 
+    database. Not harmful, but needs to be fixed.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    val = (title, content, location, 0, None, event_time, event_date)
+    # time_created based on mysql's now() function, but it is in UTC instead of
+    # UTC-4 -- may have to fixed this later
+    curs.execute("""INSERT INTO posts 
+    (title, content, time_created, location, num_starred, imagefile, event_time, event_date) 
+    VALUES (%s, %s, now(), %s, %s, %s, %s, %s)""", val)
+
+    curs.execute("""select LAST_INSERT_ID()""")
+    previous_pid_dict = curs.fetchone()
+    previous_pid = previous_pid_dict["LAST_INSERT_ID()"]
+    print(previous_pid)
+    
+    #inserting new tags into the tags table
+    for tag in tags:
+        curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", [tag])
+        tagExist = curs.fetchone().get("""EXISTS(SELECT 1 from tags where tag_name = '{}')""".format(tag))
+        if not tagExist:
+            curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
+
+    #linking the tag and post in the tagged table
+    for tag in tags:
+        curs.execute("""select tid from tags where tag_name = %s""", [tag])
+        tag_id = curs.fetchone().get('tid')
+        curs.execute("""INSERT INTO tagged (tid, pid) VALUES (%s, %s)""", (tag_id, previous_pid))
+    
+    return previous_pid
+    
+def updatePost(conn, pid, title, content, location, num_starred, imagefile, event_time, event_date):
+    '''
+    <IN PROGRESS>
+    Function that updates an existing post given information read from the front
+    end.
+    
+    Potential Problem:
+        The feature is not implemented in the front end and the current 
+    implementation has not been tested yet. Changes might occur in the future.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    sql = '''UPDATE posts 
+            SET title = %s, content = %s, location = %s, imagefile = %s, event_time = %s, 
+                event_date = %s, WHERE pid = %s'''
+    val = (title, content, location, imagefile, event_time, event_date, pid)
+    return curs.execute(sql, val)
+    
+def readOnePost(conn,pid):
+    ''' 
+    Function to return all info regarding one post to be displayed in the 
+    post page given the pid.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+        
+    curs.execute('''select * from posts where pid = %s''',[pid])
+    post = curs.fetchone()
+    if post: # check if the pid is valid. if so, update the tag information
+        curs.execute('''select * from tags inner join tagged 
+                        on tags.tid =tagged.tid where tagged.pid=%s''',[pid])
+        tags = [tag.get('tag_name') for tag in curs.fetchall()]
+        post['tags'] = tags
+    return post
+    
+def searchPosts(conn,keyword='',tags=''):
+    ''' 
+    Function to return all posts containing the given keyword and tags to be 
+    displayed in the result page.
+    
+    Potential Problems:
+        The current implementation only allows for searching by keyword (basicSearch)
+    or keyword+tags (advancedSearch). Potentially, we would also want to allow 
+    users to search posts according to event date, location, etc. Changes to this
+    function might occur in the future.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    if tags != '': # search without tags
+        curs.execute('''select * from posts inner join tagged using (pid) 
+                    inner join tags using (tid) 
+                    where posts.title like %s and tags.tag_name in (%s)''', ["%"+keyword+"%",tags])
+    else: # search with tags
+        curs.execute('''select * from posts where posts.title like %s''', ["%"+keyword+"%"])
+                    
+    posts = curs.fetchall()
+    for p in posts:
+        curs.execute('''select * from tags inner join tagged 
+                        on tags.tid =tagged.tid where tagged.pid=%s''',[p.get('pid')])
+        tags = [tag.get('tag_name') for tag in curs.fetchall()]
+        p['tags'] = tags
+        row2utf8(p)
+    return posts
+    
+if __name__ == '__main__':
+    conn = getConn('c9')
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    # posts = searchPosts(conn,keyword='f',tags='')
+    # print(posts)
+    # newpost = insertPost(conn,"testing_new_date_created", "testingfrompython", "tower", "5:01 pm", "2019-04-18")
+    # print(newpost)
+    curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", ['hello'])
+    test = curs.fetchone()["""EXISTS(SELECT 1 from tags where tag_name = '%s')""",('hello')]
+    print(test)use c9;
+
+drop table if exists isReported;
+drop table if exists tagged;
+drop table if exists starred;
+drop table if exists posted;
+drop table if exists followed;
+drop table if exists accounts;
+drop table if exists posts;
+drop table if exists tags;
+
+create table accounts (
+    username varchar(30) primary key,
+    hashed varchar(60),
+    isAdmin boolean
+);
+
+create table posts (
+    pid int auto_increment primary key,
+    title varchar(60) NOT NULL,
+    content varchar(1000),
+    time_created datetime,
+    location varchar(60),
+    num_starred int unsigned,
+    imagefile varchar(60),
+    event_time time NOT NULL,
+    event_date date NOT NULL
+);
+
+
+create table tags (
+    tid int auto_increment primary key,
+    tag_name varchar(100),
+    num_followers int unsigned
+);
+
+create table tagged (
+    tid int NOT NULL,
+    pid int NOT NULL,
+    primary key (tid, pid),
+    foreign key (tid) references tags(tid) on delete cascade on update cascade,
+    foreign key (pid) references posts(pid) on delete cascade on update cascade
+);
+
+create table starred (
+    pid int NOT NULL,
+    username varchar(30) NOT NULL,
+    primary key (pid, username),
+    foreign key (pid) references posts(pid) on delete restrict on update cascade,
+    foreign key (username) references accounts(username) on delete restrict on update cascade
+);
+
+create table posted (
+    pid int NOT NULL,
+    username varchar(30) NOT NULL,
+    primary key (pid,username),
+    foreign key (pid) references posts(pid) on delete restrict on update cascade,
+    foreign key (username) references accounts(username) on delete restrict on update cascade
+);
+
+create table followed (
+    tid int NOT NULL,
+    username varchar(30) NOT NULL,
+    primary key (tid,username),
+    foreign key (tid) references tags(tid) on delete restrict on update cascade,
+    foreign key (username) references accounts(username) on delete restrict on update cascade
+);
+
+create table isReported (
+    pid int NOT NULL,
+    username varchar(30) NOT NULL,
+    primary key (pid,username),
+    foreign key (pid) references posts(pid) on delete restrict on update cascade,
+    foreign key (username) references accounts(username) on delete restrict on update cascade
+);
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="author" content="Shrunothra">
+        <title>{{title}}</title>
+        <link rel="stylesheet" href="{{url_for('static',filename='style.css')}}" type="text/css" />
+
+        {% block headstuff %}
+        <ul>
+            <li><a href= {{ url_for("home") }}>Home</a></li>
+            {% if logged_in %}
+            <li><a href = {{ url_for("generalFeed") }}>General Feed</a></li>
+            <li><a href = {{ url_for("tagsList") }}>Tags List</a></li>
+            <li><a href = {{ url_for("createPost") }}>Create Event</a></li>
+            <li><a href = {{ url_for("userPortal") }} >User Portal</a></li>
+            <li><a href = {{ url_for("logout") }} > Logout </a></li>
+            {% else %}
+            <li><a href = {{ url_for("login") }} > Login </a></li>
+            {% endif %}
+        </ul>
+        {% endblock %}
+    </head>
+    <body>
+        <h1>{{title}}</h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div id="messages">
+                {% for msg in messages %}
+                    <p>{{msg}}</p>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}
+        {% endblock %}
+        
+        <script src="https://code.jquery.com/jquery.js"></script>
+        
+        {% block jquery_scripts %}
+        <script>
+        console.log('jQuery loaded');
+        </script>
+        {% endblock %}
+        
+    </body>
+    <footer>
+        {% block footer %}
+        <br> &copy; 2019  
+        {% endblock %}
+    </footer>
+</html>{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+ 
+<p>Fill out this form to insert an event post:</p>
+
+<form method="POST" action="">
+
+    <fieldset>
+    <legend>Event Info</legend>
+        <table>
+        <tr><td><label for="post-title" accesskey="t">Event Name:</label></td>
+            <td><input type="text" name="post-title" id="post-title" value="{{ post.title if post else '' }}"></td></tr>
+        <tr><td><label for="post-content" accesskey="c">Description:</label></td>
+            <td><input type="text" name="post-content" id="post-content" value="{{ post.content if post else '' }}"></td></tr>
+        <tr><td><label for="post-location" accesskey="l">Location:</label></td>
+            <td><input type="text" name="post-location" id="post-location" value="{{ post.location if post else '' }}"></td></tr>
+        <tr><td><label for="post-eventdate" accesskey="d">Date:</label></td>
+            <td><input type="date" name="post-eventdate" id="post-eventdate" value="{{ post.event_date if post else '' }}"></td></tr>
+        <tr><td><label for="post-eventtime" accesskey="t">Time:</label></td>
+            <td><input type="time" name="post-eventtime" id="post-eventtime" value="{{ post.event_time if post else '' }}"></td></tr>
+        <tr><td><label for="post-tags" accesskey="t">Tags:</label></td>
+            <td><input placeholder="{{ '' if post else 'tag1,tag2' }}"type="text" name="post-tags" id="post-tags" value="{{ post.tags if post else '' }}"></td></tr>
+        </table>
+    </fieldset>
+
+    <p> <input type='submit' value='Post Event'> </p>
+
+</form>
+{% endblock %}{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+    
+    <form id="advancedSearch" method="POST" action={{ url_for("advancedSearch") }}>
+        <label class="advancedSearch">Title: 
+        <input id="searchterm" placeholder="{{ keyword }}" name="searchterm"></label>
+        <label class="advancedSearch">Tags: 
+        <input id="searchterm" placeholder="{{ tags }}" name="searchtags"/>
+        </label>
+        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
+    </form>
+    <br>
+    <table id="posts-list">
+        <tr>
+            <th>Title</th>
+            <th>Location</th>
+            <th>Event_Date</th>
+            <th>Event_Time</th>
+            <th>Event_Tags</th>
+        </tr>
+        {% if posts %}
+        {% for post in posts %}
+        <tr data-pid={{ post.pid }}>
+            <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td>
+            <td class="location">{{ post.location }}</td>
+            <td class="event_date">{{ post.event_date }}</td>
+            <td class="event_time">{{ post.event_time }}</td>
+            <td class="tags">{{ post.tags }}</td>
+        </tr>
+        {% endfor %}
+        {% endif %}
+    </table>
+
+{% endblock %}{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+
+<h1>Welcome to Platform 106!</h1>
+{% if logged_in %}
+<p>Please use the tabs above to interact with our database.</p>
+{% else %}
+<p>Please log in to use the platform.</p>
+{% endif %}
+
+<p>Featured Events:</p>
+<br>
+Search:
+    <form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>
+        <input id="searchterm" placeholder="Search" name="searchterm"/>
+        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
+    </form>
+{% endblock %}{% extends "base.html" %}
+
+   {# <!--wellesley drone video -->    
+    <!--<video autoplay muted loop id="myVideo">-->
+    <!--    <source src="../static/wellesleyminclip.mp4" type="video/mp4">-->
+    <!--</video>-->
+
+    <!--<script>-->
+    <!--var video = document.getElementById("myVideo");-->
+    <!--video.play();-->
+    <!--</script>-->
+    #}
+    
+{# replaces default content block #}
+{% block content %}
+
+{# 
+ <form id="search" method=POST action="{{url_for('search')}}">
+        <input id="searchterm" placeholder="Search" name="searchterm">
+        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
+</form>
+#}
+
+<p>Please login using your Wellesley account information:</p>
+  
+ 
+<form id="joinform" style="display: none;" action="{{url_for('join')}}" method="post">
+    <h2>Join</h2>
+    <p><label>Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
+    <p><label>Password: <input type="password" name="password1" required></label></p>
+    <p><label>Password again: <input type="password" name="password2" required></label></p>
+    <p><button id="register-btn" type="submit">Register</button> 
+        <button type="" id="register2login">I have an account</button></p>
+</form>
+
+    
+<form id="loginform" style="display: block;" action="{{url_for('loginAction')}}" method="post">
+    <h2>Login</h2>
+    <p><label>Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
+    <p><label>Password: <input type="password" name="password" required></label></p>
+    <p><button type="submit" id="login-btn">Login</button> 
+        <button type="" id="login2register">I don't have an account</button></p>
+</form>
+
+
+{% endblock %}
+    
+
+{% block jquery_scripts %}
+<script>
+
+/* global $ */
+
+$("#joinform").on('submit', function (event) {
+     var pw1 = $(this).find('[name=password1]').val();
+     var pw2 = $(this).find('[name=password2]').val();
+     // should also check for length and common words etc
+     if( pw1 != pw2 ) {
+         // something more sophisticated than alert would be nice
+         alert("passwords don't match");
+     }
+});
+
+$("#login2register").on('click',function(){
+    $("#joinform").show();
+    $("#loginform").hide();
+});
+
+$("#register2login").on('click',function(){
+    $("#loginform").show();
+    $("#joinform").hide();
+});
+
+</script>
+
+{% endblock %}{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+
+{% if post %} 
+<p>Event name: {{ post.title }}</p>
+<p>Description: {{ post.content }}</p>
+<p>Location: {{ post.location }}</p>
+<p>Event date: {{ post.event_date }}</p>
+<p>Event time: {{ post.event_time }}</p>
+<p>Time created: {{ post.time_created }}</p>
+<p>Tags: {{ post.tags }}</p>
+{% endif %}
+
+{% endblock %}{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+ 
+<p>This is the Tags List page</p>
+
+<p>Some tags</p>
+<!--<br>-->
+<!--Search:-->
+<!--    <form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>-->
+<!--        <input id="searchterm" placeholder="Search" name="searchterm"/>-->
+<!--        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>-->
+<!--    </form>-->
+{% endblock %}{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+<h3>Hello, {{ username }}!</h3> 
+    
+<p> Profile and Preferences </p>
+<p> Manage my posts </p>
+<p> Manage my Stars </p>
+<p> Manage tags I am following </p>
+
+<!--<form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>-->
+<!--    <input id="searchterm" placeholder="Search" name="searchterm"/>-->
+<!--    <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>-->
+<!--</form>-->
+{% endblock %}body {
+    font-family: Tahoma;
+}
+
+h1 {
+    color: mediumaquamarine;
+    font-family: 'Comic Sans MS';
+}
+
+.subhead{
+    font-weight: bolder;
+}
+
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: teal;
+}
+
+
+li {
+  float: left;
+}
+
+li a {
+  display: block;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+/* Change the link color to #111 (black) on hover */
+li a:hover {
+  background-color: lightseagreen;
+}
+
+table {
+  border-color: seagreen;
+}
+
+p {
+  color: navy;
+}
+
+
+#messages {
+  border: 3px solid red;
+  color: red;
+  font-size: large;
+	font-style: italic;
+	padding-left: 30px;
+}
+
+/*
+#messages { 
+    color: red;
+
+}
+*/
