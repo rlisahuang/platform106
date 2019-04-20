@@ -12,13 +12,10 @@ import sys
 import MySQLdb
 import time
 import datetime
+import auth
 
 def getConn(db):
-    conn = MySQLdb.connect(host='localhost',
-                           user='ubuntu',
-                           passwd='',
-                           db=db)
-    conn.autocommit(True)
+    conn = auth.mysqlConnectCNF(db='c9')
     conn.set_character_set('utf8')
     curs = conn.cursor()
     curs.execute('set names utf8;')

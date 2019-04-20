@@ -46,6 +46,13 @@ def userPortal():
     return render_template('userPortal.html', title = "User Portal", username=session.get('username'),logged_in=logged_in)
     
 #Builds the create post page
+'''
+Potential Issue:
+So far, we have not specified who creates the post in the backend. Despite that
+any user could create posts after logging in, in the database we don't know the 
+authors of the posts. This is a feature to be implemented in the next stage to
+help us display posts that are created by a certain user in their userPortal.
+'''
 @app.route('/createPost', methods=['GET','POST'])
 def createPost():
     logged_in = session.get('logged_in', False)
@@ -105,13 +112,6 @@ def displayPost(pid):
     return render_template('post.html',post=postInfo,logged_in=session.get('logged_in',False))
 
 # url for simple search FORM
-'''
-Potential Issue:
-So far, we are allowing users to search posts when they are not logged in. It is
-similar to the Wellesley Directory, where users are able to search for information
-without logging in, but they are not allowed to see too much detailed information
-in the search results. 
-'''
 @app.route('/basicSearch',methods=['POST'])
 def basicSearch():
     title = ''
@@ -227,4 +227,3 @@ def logout():
 if __name__ == '__main__':
     app.debug = True
     app.run('0.0.0.0',8081)
-    print(session)
