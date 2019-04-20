@@ -46,6 +46,13 @@ def userPortal():
     return render_template('userPortal.html', title = "User Portal", username=session.get('username'),logged_in=logged_in)
     
 #Builds the create post page
+'''
+Potential Issue:
+So far, we have not specified who creates the post in the backend. Despite that
+any user could create posts after logging in, in the database we don't know the 
+authors of the posts. This is a feature to be implemented in the next stage to
+help us display posts that are created by a certain user in their userPortal.
+'''
 @app.route('/createPost', methods=['GET','POST'])
 def createPost():
     logged_in = session.get('logged_in', False)
@@ -105,13 +112,6 @@ def displayPost(pid):
     return render_template('post.html',post=postInfo,logged_in=session.get('logged_in',False))
 
 # url for simple search FORM
-'''
-Potential Issue:
-So far, we are allowing users to search posts when they are not logged in. It is
-similar to the Wellesley Directory, where users are able to search for information
-without logging in, but they are not allowed to see too much detailed information
-in the search results. 
-'''
 @app.route('/basicSearch',methods=['POST'])
 def basicSearch():
     title = ''
@@ -226,9 +226,7 @@ def logout():
 
 if __name__ == '__main__':
     app.debug = True
-    app.run('0.0.0.0',8081)
-    print(session)
-#!/usr/bin/python2.7
+    app.run('0.0.0.0',8081)#!/usr/bin/python2.7
 '''
 Platform 106 -- Draft Version
 Authors: Lisa Huang, Shrunothra Ambati, Jocelyn Shiue
@@ -242,13 +240,10 @@ import sys
 import MySQLdb
 import time
 import datetime
+import auth
 
 def getConn(db):
-    conn = MySQLdb.connect(host='localhost',
-                           user='ubuntu',
-                           passwd='',
-                           db=db)
-    conn.autocommit(True)
+    conn = auth.mysqlConnectCNF(db='c9')
     conn.set_character_set('utf8')
     curs = conn.cursor()
     curs.execute('set names utf8;')
@@ -396,81 +391,83 @@ if __name__ == '__main__':
     # print(newpost)
     curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", ['hello'])
     test = curs.fetchone()["""EXISTS(SELECT 1 from tags where tag_name = '%s')""",('hello')]
-    print(test)use c9;
+    print(test)import os, re
+import MySQLdb
 
-drop table if exists isReported;
-drop table if exists tagged;
-drop table if exists starred;
-drop table if exists posted;
-drop table if exists followed;
-drop table if exists accounts;
-drop table if exists posts;
-drop table if exists tags;
+def file_contents(filename):
+    with open(filename,'r') as f:
+        return f.read()
 
-create table accounts (
-    username varchar(30) primary key,
-    hashed varchar(60),
-    isAdmin boolean
-);
+def getpass(filename='~/mysql-passwd'):
+    '''returns the contents of the given file as a string.
+    
+You can store your MySQL password in there, separate from your source code'''
+    return file_contents(os.path.expanduser(filename))
+    
+# ==========================================================================================
+# Reading a file formatted like ~/.my.cnf
 
-create table posts (
-    pid int auto_increment primary key,
-    title varchar(60) NOT NULL,
-    content varchar(1000),
-    time_created datetime,
-    location varchar(60),
-    num_starred int unsigned,
-    imagefile varchar(60),
-    event_time time NOT NULL,
-    event_date date NOT NULL
-);
+def read_cnf_core(cnf_file=None):
+    '''Read a file formatted like ~/.my.cnf file; defaulting to that
+    file. Return a dictionary with the necessary information to connect to
+    a database. This function is an internal function. Consider using read_cnf(),
+    which caches the results.'''
+    if cnf_file is None:
+        cnf_file = os.path.expanduser('~/.my.cnf')
+    else:
+        cnf_file = os.path.expanduser(cnf_file)
+    cnf = file_contents(cnf_file)
+    credentials = {}
+    # the key is the name used in the CNF file;
+    # the value is the name used in the MySQLdb.connect() function
+    mapping = {'host':'host',
+               'user':'user',
+               'password':'passwd',
+               'database':'db'}
+    for key in ('host', 'user', 'password', 'database' ):
+        cred_key = mapping[key]
+        # using \w* permits empty passwords and such
+        # this regex is not perfect. It doesn't allow embedded spaces, for example.
+        regex = r"\b{k}\s*=\s*[\'\"]?(\w*)[\'\"]?".format(k=key)
+        # print 'regex',regex
+        p = re.compile(regex)
+        m = p.search(cnf)
+        if m:
+            credentials[ cred_key ] = m.group(1)
+        elif key == 'host' or key == 'database':
+            credentials[ cred_key ] = 'not specified in ' + cnf_file
+        else:
+            raise Exception('Could not find key {k} in {f}'
+                            .format(k=key,f=cnf_file))
+    checkDSN(credentials)
+    return credentials
+
+def checkDSN(dsn):
+    '''Raises a comprehensible error message if the DSN is missing some necessary info'''
+    for key in ('host', 'user', 'passwd', 'db' ):
+        if not key in dsn:
+            raise KeyError('''DSN lacks necessary '{k}' key'''.format(k=key))
+    return True
+    
+CNF = None
+
+def read_cnf(cnf_file="~/.my.cnf"):
+    global CNF
+    if CNF is not None:
+        return CNF
+    CNF = read_cnf_core(cnf_file)
+    return CNF
+    
+# ==========================================================================================
+def mysqlConnectCNF(db=None,filename="~/.my.cnf"):
+    CNF = read_cnf(filename)
+    if db is not None:
+        CNF['db'] = db
+    conn = MySQLdb.connect(**CNF)
+    conn.autocommit(True)
+    return conn
 
 
-create table tags (
-    tid int auto_increment primary key,
-    tag_name varchar(100),
-    num_followers int unsigned
-);
-
-create table tagged (
-    tid int NOT NULL,
-    pid int NOT NULL,
-    primary key (tid, pid),
-    foreign key (tid) references tags(tid) on delete cascade on update cascade,
-    foreign key (pid) references posts(pid) on delete cascade on update cascade
-);
-
-create table starred (
-    pid int NOT NULL,
-    username varchar(30) NOT NULL,
-    primary key (pid, username),
-    foreign key (pid) references posts(pid) on delete restrict on update cascade,
-    foreign key (username) references accounts(username) on delete restrict on update cascade
-);
-
-create table posted (
-    pid int NOT NULL,
-    username varchar(30) NOT NULL,
-    primary key (pid,username),
-    foreign key (pid) references posts(pid) on delete restrict on update cascade,
-    foreign key (username) references accounts(username) on delete restrict on update cascade
-);
-
-create table followed (
-    tid int NOT NULL,
-    username varchar(30) NOT NULL,
-    primary key (tid,username),
-    foreign key (tid) references tags(tid) on delete restrict on update cascade,
-    foreign key (username) references accounts(username) on delete restrict on update cascade
-);
-
-create table isReported (
-    pid int NOT NULL,
-    username varchar(30) NOT NULL,
-    primary key (pid,username),
-    foreign key (pid) references posts(pid) on delete restrict on update cascade,
-    foreign key (username) references accounts(username) on delete restrict on update cascade
-);
 <!DOCTYPE html>
 <html>
     <head>
@@ -481,15 +478,15 @@ create table isReported (
 
         {% block headstuff %}
         <ul>
-            <li><a href= {{ url_for("home") }}>Home</a></li>
+            <li><a href= "{{ url_for('home') }}">Home</a></li>
             {% if logged_in %}
-            <li><a href = {{ url_for("generalFeed") }}>General Feed</a></li>
-            <li><a href = {{ url_for("tagsList") }}>Tags List</a></li>
-            <li><a href = {{ url_for("createPost") }}>Create Event</a></li>
-            <li><a href = {{ url_for("userPortal") }} >User Portal</a></li>
-            <li><a href = {{ url_for("logout") }} > Logout </a></li>
+            <li><a href = "{{ url_for('generalFeed') }}">General Feed</a></li>
+            <li><a href = "{{ url_for('tagsList') }}">Tags List</a></li>
+            <li><a href = "{{ url_for('createPost') }}">Create Event</a></li>
+            <li><a href = "{{ url_for('userPortal') }}" >User Portal</a></li>
+            <li><a href = "{{ url_for('logout') }}" > Logout </a></li>
             {% else %}
-            <li><a href = {{ url_for("login") }} > Login </a></li>
+            <li><a href = "{{ url_for('login') }}" > Login </a></li>
             {% endif %}
         </ul>
         {% endblock %}
@@ -604,7 +601,7 @@ create table isReported (
 <p>Featured Events:</p>
 <br>
 Search:
-    <form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>
+    <form id="basicSearch" method="POST" action="{{ url_for("basicSearch") }}">
         <input id="searchterm" placeholder="Search" name="searchterm"/>
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>
@@ -788,4 +785,78 @@ p {
     color: red;
 
 }
-*/
+*/use c9;
+
+drop table if exists isReported;
+drop table if exists tagged;
+drop table if exists starred;
+drop table if exists posted;
+drop table if exists followed;
+drop table if exists accounts;
+drop table if exists posts;
+drop table if exists tags;
+
+create table accounts (
+    username varchar(30) primary key,
+    hashed varchar(60),
+    isAdmin boolean
+);
+
+create table posts (
+    pid int auto_increment primary key,
+    title varchar(60) NOT NULL,
+    content varchar(1000),
+    time_created datetime,
+    location varchar(60),
+    num_starred int unsigned,
+    imagefile varchar(60),
+    event_time time NOT NULL,
+    event_date date NOT NULL
+);
+
+
+create table tags (
+    tid int auto_increment primary key,
+    tag_name varchar(100),
+    num_followers int unsigned
+);
+
+create table tagged (
+    tid int NOT NULL,
+    pid int NOT NULL,
+    primary key (tid, pid),
+    foreign key (tid) references tags(tid) on delete cascade on update cascade,
+    foreign key (pid) references posts(pid) on delete cascade on update cascade
+);
+
+create table starred (
+    pid int NOT NULL,
+    username varchar(30) NOT NULL,
+    primary key (pid, username),
+    foreign key (pid) references posts(pid) on delete restrict on update cascade,
+    foreign key (username) references accounts(username) on delete restrict on update cascade
+);
+
+create table posted (
+    pid int NOT NULL,
+    username varchar(30) NOT NULL,
+    primary key (pid,username),
+    foreign key (pid) references posts(pid) on delete restrict on update cascade,
+    foreign key (username) references accounts(username) on delete restrict on update cascade
+);
+
+create table followed (
+    tid int NOT NULL,
+    username varchar(30) NOT NULL,
+    primary key (tid,username),
+    foreign key (tid) references tags(tid) on delete restrict on update cascade,
+    foreign key (username) references accounts(username) on delete restrict on update cascade
+);
+
+create table isReported (
+    pid int NOT NULL,
+    username varchar(30) NOT NULL,
+    primary key (pid,username),
+    foreign key (pid) references posts(pid) on delete restrict on update cascade,
+    foreign key (username) references accounts(username) on delete restrict on update cascade
+);
