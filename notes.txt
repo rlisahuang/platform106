@@ -1,0 +1,23 @@
+1. select last_insert_id() --> curs.execute('select last_insert_id() from tab')
+
+2. 
+curs.execute('''select count(name) from tab
+                where name = %s''',
+             [new_name])
+if zero:
+    curs.execute('''insert into tab(name)
+                    values(%s)''',
+                 [new_name])
+else:
+    flash('already exists')
+    
+-->
+
+try:
+    curs.execute('''insert into tab(name)
+                    values(%s)''',
+                 [new_name])
+except MySQLdb.IntegrityError:
+    flash('already exists')
+    
+3. Thread Safety in our project!!
