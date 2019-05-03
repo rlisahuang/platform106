@@ -35,7 +35,11 @@ def tagsList():
     if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
-    return render_template('tagsList.html', title = "Tags List", logged_in=logged_in)
+    
+    conn = info.getConn('c9')
+    tags = info.getTags(conn)
+    
+    return render_template('tagsList.html', title = "Tags List", tags=tags, logged_in=logged_in)
     
 @app.route('/userPortal/')
 def userPortal():

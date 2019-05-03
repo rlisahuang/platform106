@@ -15,7 +15,11 @@ import datetime
 import auth
 
 def getConn(db):
-    conn = auth.mysqlConnectCNF(db='c9')
+    # conn = auth.mysqlConnectCNF(db='c9')
+    conn = MySQLdb.connect(host='localhost',
+                           user='ubuntu',
+                           passwd='',
+                           db=db)
     conn.set_character_set('utf8')
     curs = conn.cursor()
     curs.execute('set names utf8;')
@@ -153,6 +157,15 @@ def searchPosts(conn,keyword='',tags=''):
         p['tags'] = tags
         row2utf8(p)
     return posts
+
+def getTags(conn):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select * from tags''')
+    allTags = curs.fetchall()
+    
+    return allTags
+    
     
 if __name__ == '__main__':
     conn = getConn('c9')
