@@ -43,7 +43,12 @@ def userPortal():
     if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
-    return render_template('userPortal.html', title = "User Portal", username=session.get('username'),logged_in=logged_in)
+    
+    conn = info.getConn('c9')
+    usr=session.get('username')
+    stars = info.displayStarredEvents(conn,usr)
+    return render_template('userPortal.html', title = "User Portal", 
+                        username=usr,logged_in=logged_in)
     
 #Builds the create post page
 '''
@@ -108,7 +113,12 @@ def displayPost(pid):
         flash("Please log in!")
         return redirect(url_for("login"))
     conn = info.getConn('c9')
+    
+    username = session.get('username')
+    starred = info.isStarred(conn,pid,username)
     postInfo = info.readOnePost(conn,pid)
+    postInfo["starred"] = starred
+    
     return render_template('post.html',post=postInfo,logged_in=session.get('logged_in',False))
 
 # url for simple search FORM
@@ -223,6 +233,30 @@ def logout():
     except Exception as err:
         flash('some kind of error '+str(err))
         return redirect( url_for('login') )
+        
+""" The route for star/unstar movie with ajax """     
+@app.route('/starAjax',methods=['POST'])      
+def starAjax():
+    if request.method == 'POST':
+        conn = info.getConn('c9')
+        usr = session.get('username')
+        pid = request.form.get('pid')
+        starred = request.form.get('starred')
+        
+        # check if user is logged in
+        if usr:
+            # update/insert the new rating and recalculate the average
+            if not starred:
+                info.starPost(conn,pid,usr)
+                print("post {} is starred by user {}".format(pid,usr))
+                return jsonify( {'error':False, 'pid': pid, 'starred': True} )
+            else:
+                info.unstarPost(conn,pid,usr)
+                print("post {} is unstarred by user {}".format(pid,usr))
+                return jsonify( {'error':False, 'pid': pid, 'starred': False} )
+        else:
+            print("Need to login")
+            return jsonify( {'error': True, 'err': "need to login"} )
 
 if __name__ == '__main__':
     app.debug = True

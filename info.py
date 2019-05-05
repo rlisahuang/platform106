@@ -15,7 +15,11 @@ import datetime
 import auth
 
 def getConn(db):
-    conn = auth.mysqlConnectCNF(db='c9')
+    # conn = auth.mysqlConnectCNF(db='c9')
+    conn = MySQLdb.connect(host='localhost',
+                           user='ubuntu',
+                           passwd='',
+                           db=db)
     conn.set_character_set('utf8')
     curs = conn.cursor()
     curs.execute('set names utf8;')
@@ -153,6 +157,26 @@ def searchPosts(conn,keyword='',tags=''):
         p['tags'] = tags
         row2utf8(p)
     return posts
+
+def isStarred(conn,pid,username):
+    curs = curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from starred where pid = %s and username = %s''',(pid,username))
+    return curs.fetchone()
+    
+def starPost(conn,pid,username):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''insert into starred (pid,username) values (%s, %s)''',(pid,username))
+    
+def unstarPost(conn,pid,username):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''delete from starred where pid = %s and username = %s''',(pid,username))
+    
+def displayStarredEvents(conn,username):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from starred 
+                    inner join posts using (pid) 
+                    where starred.username = %s''',[username])
+    return curs.fetchall()
     
 if __name__ == '__main__':
     conn = getConn('c9')

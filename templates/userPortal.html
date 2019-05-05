@@ -4,10 +4,14 @@
 {% block content %}
 <h3>Hello, {{ username }}!</h3> 
     
+<h4> Manage my Stars </h4>
+{% for star in stars %}
+<p>Title: {{ star['title'] }}</p>
+<p>Content: {{ star['content'] }}</p>
+{% endfor %}
 <p> Profile and Preferences </p>
 <p> Manage my posts </p>
-<p> Manage my Stars </p>
-<p> Manage tags I am following </p>
+
 
 <!--<form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>-->
 <!--    <input id="searchterm" placeholder="Search" name="searchterm"/>-->

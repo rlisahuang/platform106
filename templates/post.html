@@ -11,6 +11,35 @@
 <p>Event time: {{ post.event_time }}</p>
 <p>Time created: {{ post.time_created }}</p>
 <p>Tags: {{ post.tags }}</p>
+<form method="post" action="{{ url_for('starAjax') }}">
+    <input type="hidden" name="pid" id="pid" value="{{ post.pid }}">
+    <input type="hidden" name="starred" id="starred" value="{{ post.starred }}">
+    <label id="star-event">
+        <input type="button" name="star-event" value="star-event">
+    </label>
+</form>
+<p><button id="star-event">Star the Event</button></p>
 {% endif %}
 
+{% endblock %}
+
+{% block jquery_scripts %}
+<script>
+    var starred = $("#starred").val();
+    $("#star-event").on("click", function (event) {
+        if(!starred) {
+            // turn it on
+            if (event.target != this) return;
+            $("#star-event").text('Starred -- Click to unstar');
+            starred = true;
+        } else {
+            // turn it off
+            $("#star-event").text('Star the Event');
+            starred = false;
+        }
+        var pid = $(event.target).closest("form").find("input[name='pid']").val();
+        sendStar(pid,starred);
+    });
+    /* DEFINE sendSTAR */
+</script>
 {% endblock %}
