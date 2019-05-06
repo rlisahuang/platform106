@@ -23,7 +23,7 @@
         {% if tags %}
         {% for tag in tags %}
         <tr data-tid={{ tag.tid }}>
-            <td class="tag_name"><a href = "/searchTag/{{tag.tag_name}}">{{ tag.tag_name }}</a></td>
+            <td class="tag_name"><a href="{{ url_for('searchTag',tag=tag.tag_name) }}">{{ tag.tag_name }}</a></td>
             <td class="num_posts">get function for num_posts</td>
             <td class="num_followers">{{ tag.num_followers }}</td>
         </tr>

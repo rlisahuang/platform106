@@ -14,8 +14,8 @@
 <form method="post" action="{{ url_for('starAjax') }}">
     <input type="hidden" name="pid" id="pid" value="{{ post.pid }}">
     <input type="hidden" name="starred" id="starred" value="{{ post.starred }}">
-    <label id="star-event">
-        <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred else 'Star the Event'}}">
+    <label for="star-event">
+        <input id="star-event" type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred else 'Star the Event'}}">
     </label>
 </form>
 {% endif %}
@@ -54,11 +54,10 @@
             alert(obj.err);
         } else {
             console.log("changing star status to be " + obj.starred)
-            var button = $("#star-event").find("input[name='star-event']");
             if (obj.starred) {
-                button.val('Starred -- Click to unstar');
+                $("#star-event").val('Starred -- Click to unstar');
             } else {
-                button.val('Star the Event');
+                $("#star-event").val('Star the Event');
             }
         }
     }

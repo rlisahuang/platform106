@@ -7,7 +7,7 @@
 <h4> Manage my Stars </h4>
 {% for star in stars %}
 <p>---<br>
-Title: {{ star['title'] }}<br>
+Title: <a href="{{ url_for('displayPost',pid=star['pid']) }}">{{ star['title'] }}</a><br>
 Content: {{ star['content'] }}<br>
 ---<br>
 </p>

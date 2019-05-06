@@ -27,7 +27,11 @@
             <td class="location">{{ post.location }}</td>
             <td class="event_date">{{ post.event_date }}</td>
             <td class="event_time">{{ post.event_time }}</td>
-            <td class="tags">{{ post.tags }}</td>
+            <td class="tags">
+                {% for tag in post.tags %}
+                <a href="{{ url_for('searchTag',tag=tag) }}"> {{ tag }} </a>
+                {% endfor %}
+            </td>
         </tr>
         {% endfor %}
         {% endif %}

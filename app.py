@@ -141,7 +141,7 @@ def basicSearch():
     return redirect(request.referrer)
 
 # url for advanced search FORM (in a search page)        
-@app.route('/advancedSearch',methods=['GET', 'POST'])
+@app.route('/advancedSearch',methods=['POST'])
 def advancedSearch():
     if request.method == 'POST':
         title = request.form.get('searchterm','')
@@ -161,28 +161,21 @@ def generalFeed():
     if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
-        
-    keyword = session.get('keyword','')
-    tags = session.get('tags','')
+    keyword = session.pop('keyword','')
+    tags = session.pop('tags','')
     conn = info.getConn('c9')
     posts = info.searchPosts(conn,keyword,tags)
     tagHolder = "enter tags separated by comma: e.g. cs, club" if (tags != '') else tags
+    
+    return render_template('generalFeed.html',title = "General Feed", keyword=keyword,tags=tagHolder,posts=posts,logged_in=session.get('logged_in',False))    
 
-    return render_template('generalFeed.html',title = "General Feed", keyword=keyword,tags=tagHolder,posts=posts,logged_in=session.get('logged_in',False))
     
 # url that hosts the advanced search form as well as search results    
-@app.route('/searchTag/<tag_name>')
-def searchTag(tag_name):
-    logged_in = session.get('logged_in', False)
-    if not logged_in: # the link is only available after the user is logged in
-        flash("Please log in!")
-        return redirect(url_for("login"))
-        
-    conn = info.getConn('c9')
-    posts = info.searchPosts(conn,'', tag_name)
+@app.route('/searchTag/<tag>')
+def searchTag(tag):
+    session['tags'] = tag
+    return redirect(url_for("generalFeed"))
 
-    return render_template('generalFeed.html',title = "General Feed",posts=posts,logged_in=session.get('logged_in',False))
-    
 
 @app.route('/join/', methods=["POST"])
 def join():
