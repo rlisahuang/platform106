@@ -57,7 +57,7 @@ def row2utf8(row):
 #-------------------------------------------------------------------------------
 # Methods for getting information from, and updating the WMDB
 
-def insertPost(conn, title, content, location, event_time, event_date, tags):
+def insertPost(conn, title, content, location, event_time, event_date, tags, username):
     '''
     Function that inserts a new post into the database and establish post-tag 
     relationships if given any tags.
@@ -79,9 +79,14 @@ def insertPost(conn, title, content, location, event_time, event_date, tags):
     conn.commit()
 
     curs.execute("""select LAST_INSERT_ID()""")
+    #alternative version -- curs.execute("""select max(LAST_INSERT_ID()) from posts""")
     previous_pid_dict = curs.fetchone()
     previous_pid = previous_pid_dict["LAST_INSERT_ID()"]
     print(previous_pid)
+    
+    # insert into `posted` as well
+    curs.execute("""insert into posted (pid,username) values (%s,%s)""",(previous_pid,username))
+    conn.commit()
     
     #inserting new tags into the tags table
     for tag in tags:

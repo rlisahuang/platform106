@@ -107,7 +107,7 @@ def createPost():
         if error:
             return render_template('createPost.html', title="Create a Post!",post=newpost, logged_in=logged_in)
         else: 
-            pid = info.insertPost(conn, title, content, location, event_time, event_date, tags)
+            pid = info.insertPost(conn, title, content, location, event_time, event_date, tags, session.get('username'))
             return redirect(url_for('displayPost', pid=pid))
 
 # url for post page
@@ -189,17 +189,24 @@ def join():
         hashed = bcrypt.hashpw(passwd1.encode('utf-8'), bcrypt.gensalt())
         conn = info.getConn('c9')
         curs = conn.cursor(MySQLdb.cursors.DictCursor)
-        curs.execute('SELECT username FROM accounts WHERE username = %s',
-                     [username])
-        row = curs.fetchone()
-        if row is not None:
-            flash('That username is taken')
-            return redirect( url_for('login') )
-        curs.execute('INSERT into accounts(username,hashed) VALUES(%s,%s)',
+        # curs.execute('SELECT username FROM accounts WHERE username = %s',
+        #              [username])
+        # row = curs.fetchone()
+        # if row is not None:
+        #     flash('That username is taken')
+        #     return redirect( url_for('login') )
+        try:
+            curs.execute('INSERT into accounts(username,hashed) VALUES(%s,%s)',
                      [username, hashed])
+            conn.commit()
+        except MySQLdb.IntegrityError as err:
+            flash('That username is taken')
+            return redirect(url_for('login'))
+            
         session['username'] = username
         session['logged_in'] = True
         return redirect( url_for('userPortal') )
+        
     except Exception as err:
         flash('form submission error '+str(err))
         return redirect( url_for('login') )
