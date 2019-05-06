@@ -3,13 +3,37 @@
 {# replaces default content block #}
 {% block content %}
  
-<p>This is the Tags List page</p>
+    <p>This is the Tags List page</p>
+    
+    <form id="advancedSearch" method="POST" action={{ url_for("advancedSearch") }}>
+        <label class="advancedSearch">Search Tags: 
+        <input id="searchterm" placeholder="{{ tags }}" name="searchtags"/>
+        </label>
+        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
+    </form>
+    
+    <p>All Tags</p>
+    <table id="tags-list">
+        <tr>
+            <th>Tag Name</th>
+            <th>Number of Posts</th>
+            <th>Number of Followers</th>
+            
+        </tr>
+        {% if tags %}
+        {% for tag in tags %}
+        <tr data-tid={{ tag.tid }}>
+            <td class="tag_name"><a href = "/searchTag/{{tag.tag_name}}">{{ tag.tag_name }}</a></td>
+            <td class="num_posts">get function for num_posts</td>
+            <td class="num_followers">{{ tag.num_followers }}</td>
+        </tr>
+        {% endfor %}
+        {% endif %}
+        
+    </table>
+    
+    
 
-<p>Some tags</p>
-<!--<br>-->
-<!--Search:-->
-<!--    <form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>-->
-<!--        <input id="searchterm" placeholder="Search" name="searchterm"/>-->
-<!--        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>-->
-<!--    </form>-->
+
+
 {% endblock %}

@@ -187,6 +187,15 @@ def displayStarredEvents(conn,username):
                     inner join posts using (pid) 
                     where starred.username = %s''',[username])
     return curs.fetchall()
+
+def getTags(conn):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select * from tags''')
+    allTags = curs.fetchall()
+    
+    return allTags
+    
     
 if __name__ == '__main__':
     conn = getConn('c9')

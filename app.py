@@ -35,7 +35,11 @@ def tagsList():
     if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
-    return render_template('tagsList.html', title = "Tags List", logged_in=logged_in)
+    
+    conn = info.getConn('c9')
+    tags = info.getTags(conn)
+    
+    return render_template('tagsList.html', title = "Tags List", tags=tags, logged_in=logged_in)
     
 @app.route('/userPortal/')
 def userPortal():
@@ -157,6 +161,7 @@ def generalFeed():
     if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
+        
     keyword = session.get('keyword','')
     tags = session.get('tags','')
     conn = info.getConn('c9')
@@ -165,6 +170,20 @@ def generalFeed():
 
     return render_template('generalFeed.html',title = "General Feed", keyword=keyword,tags=tagHolder,posts=posts,logged_in=session.get('logged_in',False))
     
+# url that hosts the advanced search form as well as search results    
+@app.route('/searchTag/<tag_name>')
+def searchTag(tag_name):
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
+        
+    conn = info.getConn('c9')
+    posts = info.searchPosts(conn,'', tag_name)
+
+    return render_template('generalFeed.html',title = "General Feed",posts=posts,logged_in=session.get('logged_in',False))
+    
+
 @app.route('/join/', methods=["POST"])
 def join():
     try:
