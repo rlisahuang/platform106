@@ -15,10 +15,9 @@
     <input type="hidden" name="pid" id="pid" value="{{ post.pid }}">
     <input type="hidden" name="starred" id="starred" value="{{ post.starred }}">
     <label id="star-event">
-        <input type="button" name="star-event" value="star-event">
+        <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred else 'Star the Event'}}">
     </label>
 </form>
-<p><button id="star-event">Star the Event</button></p>
 {% endif %}
 
 {% endblock %}
@@ -26,20 +25,42 @@
 {% block jquery_scripts %}
 <script>
     var starred = $("#starred").val();
+    var URL = "{{ url_for('starAjax') }}";
+    
     $("#star-event").on("click", function (event) {
+        event.preventDefault();
         if(!starred) {
-            // turn it on
             if (event.target != this) return;
-            $("#star-event").text('Starred -- Click to unstar');
             starred = true;
         } else {
-            // turn it off
-            $("#star-event").text('Star the Event');
             starred = false;
         }
         var pid = $(event.target).closest("form").find("input[name='pid']").val();
         sendStar(pid,starred);
     });
-    /* DEFINE sendSTAR */
+    
+    function sendStar(pid,starred) {
+        console.log("Sending "+pid +" and " + starred +" to the back end");
+        $.post(URL,{'error':false, 'pid': pid, 'starred': starred},
+        function(data,status){
+            updateStar(data);
+        },'json');
+    }
+    
+    function updateStar(obj) {
+        console.log(obj);
+        if(obj.error) {
+            // $("#errors").empty().html('Error: '+obj.err);
+            alert(obj.err);
+        } else {
+            console.log("changing star status to be " + obj.starred)
+            var button = $("#star-event").find("input[name='star-event']");
+            if (obj.starred) {
+                button.val('Starred -- Click to unstar');
+            } else {
+                button.val('Star the Event');
+            }
+        }
+    }
 </script>
 {% endblock %}

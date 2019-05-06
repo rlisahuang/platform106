@@ -47,7 +47,8 @@ def userPortal():
     conn = info.getConn('c9')
     usr=session.get('username')
     stars = info.displayStarredEvents(conn,usr)
-    return render_template('userPortal.html', title = "User Portal", 
+    print(stars)
+    return render_template('userPortal.html', title = "User Portal", stars=stars,
                         username=usr,logged_in=logged_in)
     
 #Builds the create post page
@@ -241,12 +242,13 @@ def starAjax():
         conn = info.getConn('c9')
         usr = session.get('username')
         pid = request.form.get('pid')
-        starred = request.form.get('starred')
-        
+        starred = info.isStarred(conn,pid,usr)
+
         # check if user is logged in
-        if usr:
-            # update/insert the new rating and recalculate the average
-            if not starred:
+        if usr is not None:
+            if starred is None:
+                print(pid)
+                print(usr)
                 info.starPost(conn,pid,usr)
                 print("post {} is starred by user {}".format(pid,usr))
                 return jsonify( {'error':False, 'pid': pid, 'starred': True} )

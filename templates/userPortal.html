@@ -6,11 +6,14 @@
     
 <h4> Manage my Stars </h4>
 {% for star in stars %}
-<p>Title: {{ star['title'] }}</p>
-<p>Content: {{ star['content'] }}</p>
+<p>---<br>
+Title: {{ star['title'] }}<br>
+Content: {{ star['content'] }}<br>
+---<br>
+</p>
 {% endfor %}
-<p> Profile and Preferences </p>
-<p> Manage my posts </p>
+<h4> Profile and Preferences </h4>
+<h4> Manage my posts </h4>
 
 
 <!--<form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>-->

@@ -76,6 +76,7 @@ def insertPost(conn, title, content, location, event_time, event_date, tags):
     curs.execute("""INSERT INTO posts 
     (title, content, time_created, location, num_starred, imagefile, event_time, event_date) 
     VALUES (%s, %s, now(), %s, %s, %s, %s, %s)""", val)
+    conn.commit()
 
     curs.execute("""select LAST_INSERT_ID()""")
     previous_pid_dict = curs.fetchone()
@@ -88,12 +89,14 @@ def insertPost(conn, title, content, location, event_time, event_date, tags):
         tagExist = curs.fetchone().get("""EXISTS(SELECT 1 from tags where tag_name = '{}')""".format(tag))
         if not tagExist:
             curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
+            conn.commit()
 
     #linking the tag and post in the tagged table
     for tag in tags:
         curs.execute("""select tid from tags where tag_name = %s""", [tag])
         tag_id = curs.fetchone().get('tid')
         curs.execute("""INSERT INTO tagged (tid, pid) VALUES (%s, %s)""", (tag_id, previous_pid))
+        conn.commit()
     
     return previous_pid
     
@@ -112,7 +115,8 @@ def updatePost(conn, pid, title, content, location, num_starred, imagefile, even
             SET title = %s, content = %s, location = %s, imagefile = %s, event_time = %s, 
                 event_date = %s, WHERE pid = %s'''
     val = (title, content, location, imagefile, event_time, event_date, pid)
-    return curs.execute(sql, val)
+    curs.execute(sql, val)
+    conn.commit()
     
 def readOnePost(conn,pid):
     ''' 
@@ -165,11 +169,17 @@ def isStarred(conn,pid,username):
     
 def starPost(conn,pid,username):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
-    curs.execute('''insert into starred (pid,username) values (%s, %s)''',(pid,username))
+    starred = isStarred(conn,pid,username)
+    if starred is None:
+        curs.execute('''insert into starred (pid,username) values (%s, %s)''',(pid,username))
+        conn.commit()
     
 def unstarPost(conn,pid,username):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
-    curs.execute('''delete from starred where pid = %s and username = %s''',(pid,username))
+    starred = isStarred(conn,pid,username)
+    if starred is not None:
+        curs.execute('''delete from starred where pid = %s and username = %s''',(pid,username))
+        conn.commit()
     
 def displayStarredEvents(conn,username):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
@@ -185,6 +195,8 @@ if __name__ == '__main__':
     # print(posts)
     # newpost = insertPost(conn,"testing_new_date_created", "testingfrompython", "tower", "5:01 pm", "2019-04-18")
     # print(newpost)
-    curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", ['hello'])
-    test = curs.fetchone()["""EXISTS(SELECT 1 from tags where tag_name = '%s')""",('hello')]
-    print(test)
+    #curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", ['hello'])
+    #test = curs.fetchone()["""EXISTS(SELECT 1 from tags where tag_name = '%s')""",('hello')]
+    print(isStarred(conn,10,'wendy'))
+    starPost(conn,10,'wendy')
+    print(isStarred(conn,10,'wendy'))
