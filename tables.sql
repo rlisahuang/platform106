@@ -24,7 +24,9 @@ create table posts (
     num_starred int unsigned,
     imagefile varchar(60),
     event_time time NOT NULL,
-    event_date date NOT NULL
+    event_date date NOT NULL,
+    author varchar(30) NOT NULL,
+    foreign key (author) references accounts(username) on delete restrict on update cascade
 );
 
 
@@ -50,6 +52,7 @@ create table starred (
     foreign key (username) references accounts(username) on delete restrict on update cascade
 );
 
+/*
 create table posted (
     pid int NOT NULL,
     username varchar(30) NOT NULL,
@@ -57,6 +60,7 @@ create table posted (
     foreign key (pid) references posts(pid) on delete restrict on update cascade,
     foreign key (username) references accounts(username) on delete restrict on update cascade
 );
+*/
 
 create table followed (
     tid int NOT NULL,

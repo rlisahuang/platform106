@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+ 
+<p>Fill out this form to UPDATE an event post:</p>
+    <form method=POST action={{ url_for("updatePost",pid=post.pid) }}>
+        
+    <fieldset>
+    <legend>Event Info</legend>
+        <table>
+        <tr><td><label for="post-title" accesskey="t">Event Name:</label></td>
+            <td><input type="text" name="post-title" id="post-title" value="{{ post.title }}"></td></tr>
+        <tr><td><label for="post-content" accesskey="c">Description:</label></td>
+            <td><input type="text" name="post-content" id="post-content" value="{{ post.content }}"></td></tr>
+        <tr><td><label for="post-location" accesskey="l">Location:</label></td>
+            <td><input type="text" name="post-location" id="post-location" value="{{ post.location }}"></td></tr>
+        <tr><td><label for="post-eventdate" accesskey="d">Date:</label></td>
+            <td><input type="date" name="post-eventdate" id="post-eventdate" value="{{ post.event_date }}"></td></tr>
+        <tr><td><label for="post-eventtime" accesskey="t">Time:</label></td>
+            <td><input type="time" name="post-eventtime" id="post-eventtime" value="{{ post.event_time }}"></td></tr>
+        <tr><td><label for="post-tags" accesskey="t">Tags:</label></td>
+            <td><input type="text" name="post-tags" id="post-tags" value="{{ post.tags }}"></td></tr>
+        </table>
+        
+    </fieldset>
+
+        <p> <input type="submit" name="submit" value="update">
+        <input type="submit" name="submit" value="delete"> </p>
+
+    </form>
+{% endblock %}

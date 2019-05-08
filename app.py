@@ -13,6 +13,8 @@ from flask import (Flask, render_template, make_response, url_for, request,
 from werkzeug import secure_filename
 app = Flask(__name__)
 
+import datetime
+
 import info
 import sys,os
 import bcrypt
@@ -51,13 +53,14 @@ def userPortal():
     conn = info.getConn('c9')
     usr=session.get('username')
     stars = info.displayStarredEvents(conn,usr)
+    posts = info.displayPostsByUser(conn,usr)
     print(stars)
     return render_template('userPortal.html', title = "User Portal", stars=stars,
-                        username=usr,logged_in=logged_in)
+                        posts=posts, username=usr,logged_in=logged_in)
     
 #Builds the create post page
 '''
-Potential Issue:
+Potential Issue: <SOLVED>
 So far, we have not specified who creates the post in the backend. Despite that
 any user could create posts after logging in, in the database we don't know the 
 authors of the posts. This is a feature to be implemented in the next stage to
@@ -121,11 +124,51 @@ def displayPost(pid):
     
     username = session.get('username')
     starred = info.isStarred(conn,pid,username)
+    isAuthor = info.isAuthor(conn,pid,username)
     postInfo = info.readOnePost(conn,pid)
     postInfo["starred"] = starred
     
-    return render_template('post.html',post=postInfo,logged_in=session.get('logged_in',False))
+    return render_template('post.html',isAuthor=isAuthor,post=postInfo,logged_in=session.get('logged_in',False))
+    
+@app.route('/updatePost/<int:pid>',methods=['GET','POST'])
+def updatePost(pid):
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
+    conn = info.getConn('c9')
+    # information from database
+    post = info.readOnePost(conn,pid)
+    time_obj = datetime.datetime.strptime(str(post['event_time']),'%H:%M:%S').time()
+    post['event_time'] = str(time_obj)[:5] # hh:mm in 12-hour format
+    oldtags = post.get('tags')
+    
+    if request.method == "GET":
+        # set up the page and pre-fill the form using info from database
+        if len(oldtags) == 0:
+            post['tags'] = ''
+        else:
+            post['tags'] = ",".join(oldtags)
+        return render_template('updatePost.html', post=post,logged_in=session.get('logged_in',False))
+    else:
+        # the delete function, flash message and redirect to home page
+        if request.form.get('submit') == 'delete':
+            info.deletePost(conn,pid)
+            print("Post ({}) was deleted successfully.".format(pid))
+            return redirect(url_for('userPortal'))
+        # the update function, grab info filled in by the user
+        else:
+            title = request.form.get('post-title')
+            content = request.form.get('post-content')
+            location = request.form.get('post-location')
+            date = request.form.get('post-eventdate')
+            time = request.form.get('post-eventtime')
+            newtags = request.form.get('post-tags','').split(',')
 
+            info.updatePost(conn,pid, title, content, location, None,time,date,session.get('username'),oldtags,newtags)
+            print("Post ({}) was updated successfully.".format(pid))
+            return redirect(url_for('displayPost',pid=pid))
+    
 # url for simple search FORM
 @app.route('/basicSearch',methods=['POST'])
 def basicSearch():

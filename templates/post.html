@@ -4,6 +4,12 @@
 {% block content %}
 
 {% if post %} 
+{% if isAuthor %}
+<a href="{{ url_for('updatePost',pid=post.pid) }}">
+    <button id="edit-post" type="button" >Edit the Post</button>
+</a>
+{% endif %}
+<p>Author: {{ post.author }}</p>
 <p>Event name: {{ post.title }}</p>
 <p>Description: {{ post.content }}</p>
 <p>Location: {{ post.location }}</p>

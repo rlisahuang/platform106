@@ -70,12 +70,12 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
     database. Not harmful, but needs to be fixed.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
-    val = (title, content, location, 0, None, event_time, event_date)
+    val = (title, content, location, 0, None, event_time, event_date,username)
     # time_created based on mysql's now() function, but it is in UTC instead of
     # UTC-4 -- may have to fixed this later
     curs.execute("""INSERT INTO posts 
-    (title, content, time_created, location, num_starred, imagefile, event_time, event_date) 
-    VALUES (%s, %s, now(), %s, %s, %s, %s, %s)""", val)
+    (title, content, time_created, location, num_starred, imagefile, event_time, event_date,author) 
+    VALUES (%s, %s, now(), %s, %s, %s, %s, %s,%s)""", val)
     conn.commit()
 
     curs.execute("""select LAST_INSERT_ID()""")
@@ -84,9 +84,9 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
     previous_pid = previous_pid_dict["LAST_INSERT_ID()"]
     print(previous_pid)
     
-    # insert into `posted` as well
-    curs.execute("""insert into posted (pid,username) values (%s,%s)""",(previous_pid,username))
-    conn.commit()
+    # # insert into `posted` as well
+    # curs.execute("""insert into posted (pid,username) values (%s,%s)""",(previous_pid,username))
+    # conn.commit()
     
     #inserting new tags into the tags table
     for tag in tags:
@@ -105,7 +105,7 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
     
     return previous_pid
     
-def updatePost(conn, pid, title, content, location, num_starred, imagefile, event_time, event_date):
+def updatePost(conn, pid, title, content, location, imagefile, event_time, event_date,author,oldtags,newtags):
     '''
     <IN PROGRESS>
     Function that updates an existing post given information read from the front
@@ -116,11 +116,40 @@ def updatePost(conn, pid, title, content, location, num_starred, imagefile, even
     implementation has not been tested yet. Changes might occur in the future.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    for tag in oldtags:
+        curs.execute('''DELETE t1
+                        FROM tagged t1
+                        inner join tags t2
+                        using (tid) 
+                        where t1.pid = %s and t2.tag_name = %s''',[pid,tag])
+        conn.commit()
+    
+    for tag in newtags:
+        curs.execute("""select tid from tags where tag_name = %s""", [tag])
+        tag_id = curs.fetchone()
+        if not tag_id:
+            curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
+            conn.commit()
+            curs.execute("""select LAST_INSERT_ID()""")
+            tid = curs.fetchone()["LAST_INSERT_ID()"]
+        else:
+            tid = tag_id['tid']
+        curs.execute('''INSERT INTO tagged (tid,pid) values (%s,%s)''',(tid,pid))
+        conn.commit()
+        
     sql = '''UPDATE posts 
             SET title = %s, content = %s, location = %s, imagefile = %s, event_time = %s, 
-                event_date = %s, WHERE pid = %s'''
-    val = (title, content, location, imagefile, event_time, event_date, pid)
+                event_date = %s, author=%s
+            WHERE pid = %s'''
+    val = (title, content, location, imagefile, event_time, event_date, author, pid)
     curs.execute(sql, val)
+    conn.commit()
+    
+def deletePost(conn,pid):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute("""delete from starred where pid = %s""",[pid])
+    curs.execute("""delete from tagged where pid = %s""",[pid])
+    curs.execute("""DELETE FROM posts WHERE pid = %s""", [pid])
     conn.commit()
     
 def readOnePost(conn,pid):
@@ -132,7 +161,8 @@ def readOnePost(conn,pid):
         
     curs.execute('''select * from posts where pid = %s''',[pid])
     post = curs.fetchone()
-    if post: # check if the pid is valid. if so, update the tag information
+    post['tags'] = []
+    if post is not None: # check if the pid is valid. if so, update the tag information
         curs.execute('''select * from tags inner join tagged 
                         on tags.tid =tagged.tid where tagged.pid=%s''',[pid])
         tags = [tag.get('tag_name') for tag in curs.fetchall()]
@@ -193,6 +223,17 @@ def displayStarredEvents(conn,username):
                     where starred.username = %s''',[username])
     return curs.fetchall()
 
+def displayPostsByUser(conn,username):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from posts 
+                    where author = %s''',[username])
+    return curs.fetchall()
+    
+def isAuthor(conn,pid,username):
+    curs = curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from posts where pid = %s and author = %s''',(pid,username))
+    return (curs.fetchone() is not None)
+    
 def getTags(conn):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
@@ -211,6 +252,15 @@ if __name__ == '__main__':
     # print(newpost)
     #curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", ['hello'])
     #test = curs.fetchone()["""EXISTS(SELECT 1 from tags where tag_name = '%s')""",('hello')]
-    print(isStarred(conn,10,'wendy'))
-    starPost(conn,10,'wendy')
-    print(isStarred(conn,10,'wendy'))
+    # print(isStarred(conn,10,'wendy'))
+    # starPost(conn,10,'wendy')
+    # print(isStarred(conn,10,'wendy'))
+    # author18 = isAuthor(conn,18,'wanda')
+    # print(author18) # true
+    # author2 = isAuthor(conn,2,'wendy')
+    # print(author2) # false
+    onePost = readOnePost(conn,19)
+    a =  onePost['event_time']
+    time_obj = datetime.datetime.strptime(str(a),'%I:%M:%S').time()
+    print(type(time_obj))
+    print(str(time_obj)[:5])

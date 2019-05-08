@@ -14,6 +14,13 @@ Content: {{ star['content'] }}<br>
 {% endfor %}
 <h4> Profile and Preferences </h4>
 <h4> Manage my posts </h4>
+{% for post in posts %}
+<p>---<br>
+Title: <a href="{{ url_for('displayPost',pid=post['pid']) }}">{{ post['title'] }}</a><br>
+Content: {{ post['content'] }}<br>
+---<br>
+</p>
+{% endfor %}
 
 
 <!--<form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>-->

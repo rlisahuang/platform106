@@ -19,6 +19,7 @@
             <th>Event_Date</th>
             <th>Event_Time</th>
             <th>Event_Tags</th>
+            <th>Author</th>
         </tr>
         {% if posts %}
         {% for post in posts %}
@@ -32,6 +33,7 @@
                 <a href="{{ url_for('searchTag',tag=tag) }}"> {{ tag }} | </a>
                 {% endfor %}
             </td>
+            <td class="post_author">{{ post.author }}</td>
         </tr>
         {% endfor %}
         {% endif %}
