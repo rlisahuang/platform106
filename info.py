@@ -234,6 +234,32 @@ def isAuthor(conn,pid,username):
     curs.execute('''select * from posts where pid = %s and author = %s''',(pid,username))
     return (curs.fetchone() is not None)
     
+def isFollowed(conn,tid,username):
+    curs = curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from followed where tid = %s and username = %s''',(tid,username))
+    return curs.fetchone()
+    
+def followTag(conn,tid,username):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    followed = isFollowed(conn,tid,username)
+    if followed is None:
+        curs.execute('''insert into followed (tid,username) values (%s, %s)''',(tid,username))
+        conn.commit()
+        
+def unfollowTag(conn,tid,username):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    followed = isFollowed(conn,tid,username)
+    if followed is not None:
+        curs.execute('''delete from followed where tid = %s and username = %s''',(tid,username))
+        conn.commit()
+
+def displayFollowedTags(conn,username):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from followed 
+                    inner join tags using (tid) 
+                    where followed.username = %s''',[username])
+    return curs.fetchall()
+
 def getTags(conn):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     

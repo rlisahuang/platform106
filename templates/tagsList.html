@@ -26,14 +26,61 @@
             <td class="tag_name"><a href="{{ url_for('searchTag',tag=tag.tag_name) }}">{{ tag.tag_name }}</a></td>
             <td class="num_posts">get function for num_posts</td>
             <td class="num_followers">{{ tag.num_followers }}</td>
+            <td>
+                <form method="post" action="{{ url_for('followAjax') }}">
+                    <input type="hidden" name="tid" id="tid" value="{{ tag.tid }}">
+                    <input type="hidden" name="followed" id="followed" value="{{ tag.followed }}">
+                    <label for="follow-tag">
+                        <input id="follow-tag" type="button" name="follow-tag" value="{{'Followed -- Click to unfollow' if tag.followed else 'Follow the Tag'}}">
+                    </label>
+                </form>
+            </td>
         </tr>
         {% endfor %}
         {% endif %}
         
     </table>
+
+{% endblock %}
+
+{% block jquery_scripts %}
+<script>
+    var followed = $("#followed").val();
+    var URL = "{{ url_for('followAjax') }}";
     
+    $("#follow-tag").on("click", function (event) {
+        event.preventDefault();
+        if(!followed) {
+            if (event.target != this) return;
+            followed = true;
+        } else {
+            followed = false;
+        }
+        var tid = $(event.target).closest("form").find("input[name='tid']").val();
+        sendFollow(tid,followed);
+    });
     
-
-
-
+    function sendFollow(tid,followed) {
+        console.log("Sending "+tid +" and " + followed +" to the back end");
+        $.post(URL,{'error':false, 'tid': tid, 'followed': followed},
+        function(data,status){
+            updateFollow(data);
+        },'json');
+    }
+    
+    function updateFollow(obj) {
+        console.log(obj);
+        if(obj.error) {
+            // $("#errors").empty().html('Error: '+obj.err);
+            alert(obj.err);
+        } else {
+            console.log("changing follow status to be " + obj.followed)
+            if (obj.followed) {
+                $("#follow-tag").val('Followed -- Click to unfollow');
+            } else {
+                $("#follow-tag").val('Follow the Tag');
+            }
+        }
+    }
+</script>
 {% endblock %}

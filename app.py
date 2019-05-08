@@ -54,9 +54,10 @@ def userPortal():
     usr=session.get('username')
     stars = info.displayStarredEvents(conn,usr)
     posts = info.displayPostsByUser(conn,usr)
-    print(stars)
+
     return render_template('userPortal.html', title = "User Portal", stars=stars,
                         posts=posts, username=usr,logged_in=logged_in)
+
     
 #Builds the create post page
 '''
@@ -232,12 +233,6 @@ def join():
         hashed = bcrypt.hashpw(passwd1.encode('utf-8'), bcrypt.gensalt())
         conn = info.getConn('c9')
         curs = conn.cursor(MySQLdb.cursors.DictCursor)
-        # curs.execute('SELECT username FROM accounts WHERE username = %s',
-        #              [username])
-        # row = curs.fetchone()
-        # if row is not None:
-        #     flash('That username is taken')
-        #     return redirect( url_for('login') )
         try:
             curs.execute('INSERT into accounts(username,hashed) VALUES(%s,%s)',
                      [username, hashed])
@@ -297,7 +292,7 @@ def logout():
         flash('some kind of error '+str(err))
         return redirect( url_for('login') )
         
-""" The route for star/unstar movie with ajax """     
+""" The route for star/unstar post with ajax """     
 @app.route('/starAjax',methods=['POST'])      
 def starAjax():
     if request.method == 'POST':
@@ -318,6 +313,31 @@ def starAjax():
                 info.unstarPost(conn,pid,usr)
                 print("post {} is unstarred by user {}".format(pid,usr))
                 return jsonify( {'error':False, 'pid': pid, 'starred': False} )
+        else:
+            print("Need to login")
+            return jsonify( {'error': True, 'err': "need to login"} )
+
+""" The route for follow/unfollow tag with ajax """     
+@app.route('/followAjax',methods=['POST'])      
+def followAjax():
+    if request.method == 'POST':
+        conn = info.getConn('c9')
+        usr = session.get('username')
+        tid = request.form.get('tid')
+        followed = info.isFollowed(conn,tid,usr)
+
+        # check if user is logged in
+        if usr is not None:
+            if followed is None:
+                print(tid)
+                print(usr)
+                info.followTag(conn,tid,usr)
+                print("post {} is starred by user {}".format(tid,usr))
+                return jsonify( {'error':False, 'tid': tid, 'followed': True} )
+            else:
+                info.unfollowTag(conn,tid,usr)
+                print("post {} is unfollowed by user {}".format(tid,usr))
+                return jsonify( {'error':False, 'tid': tid, 'followed': False} )
         else:
             print("Need to login")
             return jsonify( {'error': True, 'err': "need to login"} )

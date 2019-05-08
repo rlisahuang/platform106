@@ -12,6 +12,14 @@ Content: {{ star['content'] }}<br>
 ---<br>
 </p>
 {% endfor %}
+
+<h4> Manage my Followed Tags </h4>
+{% for follow in follows %}
+<p>---<br>
+Title: <a href="{{ url_for('searchTag',tag=follow['tag_name']) }}">{{ follow['tag_name'] }}</a><br>
+</p>
+{% endfor %}
+
 <h4> Profile and Preferences </h4>
 <h4> Manage my posts </h4>
 {% for post in posts %}
