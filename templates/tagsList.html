@@ -28,10 +28,10 @@
             <td class="num_followers">{{ tag.num_followers }}</td>
             <td>
                 <form method="post" action="{{ url_for('followAjax') }}">
-                    <input type="hidden" name="tid" id="tid" value="{{ tag.tid }}">
-                    <input type="hidden" name="followed" id="followed" value="{{ tag.followed }}">
-                    <label for="follow-tag">
-                        <input id="follow-tag" type="button" name="follow-tag" value="{{'Followed -- Click to unfollow' if tag.followed else 'Follow the Tag'}}">
+                    <input type="hidden" name="tid" class="tid" value="{{ tag.tid }}">
+                    <input type="hidden" name="followed" class="followed" value="{{ tag.followed }}">
+                    <label class = "follow-tag">
+                        <input type="button" name="follow-tag" value="{{'Followed -- Click to unfollow' if tag.followed == '1' else 'Follow the Tag'}}">
                     </label>
                 </form>
             </td>
@@ -45,41 +45,47 @@
 
 {% block jquery_scripts %}
 <script>
-    var followed = $("#followed").val();
     var URL = "{{ url_for('followAjax') }}";
     
-    $("#follow-tag").on("click", function (event) {
+    $("label.follow-tag").on("click", function (event) {
         event.preventDefault();
-        if(!followed) {
-            if (event.target != this) return;
-            followed = true;
-        } else {
-            followed = false;
-        }
+        var followed = $(event.target).closest("form").find("input[name='followed']").val();
+       // var followed = $(event.target).closest("form").find("input[name='followed']").is(":checked");
+        console.log("follow: " + followed);
+        // if(!followed) {
+        // if (event.target != this) return;
+            // followed = true;
+        // } else {
+            // followed = false;
+        // }
         var tid = $(event.target).closest("form").find("input[name='tid']").val();
-        sendFollow(tid,followed);
+        var button = $(this).find("input[name=follow-tag]");
+        sendFollow(tid,followed,button);
     });
     
-    function sendFollow(tid,followed) {
+    function sendFollow(tid,followed,button) {
+        alert("I am " + followed);
         console.log("Sending "+tid +" and " + followed +" to the back end");
         $.post(URL,{'error':false, 'tid': tid, 'followed': followed},
         function(data,status){
-            updateFollow(data);
+            updateFollow(data,button);
         },'json');
     }
     
-    function updateFollow(obj) {
+    function updateFollow(obj,button) {
         console.log(obj);
         if(obj.error) {
             // $("#errors").empty().html('Error: '+obj.err);
             alert(obj.err);
         } else {
             console.log("changing follow status to be " + obj.followed)
-            if (obj.followed) {
-                $("#follow-tag").val('Followed -- Click to unfollow');
+            if (obj.followed == "1") {
+                button.val('Followed -- Click to unfollow');
             } else {
-                $("#follow-tag").val('Follow the Tag');
+                //button.closest("form").find("input[name=followed]").prop(checked, false);
+                button.val('Follow the Tag');
             }
+            button.closest("form").find("input[name=followed]").val(obj.followed);
         }
     }
 </script>
