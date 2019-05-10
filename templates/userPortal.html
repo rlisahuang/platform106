@@ -3,8 +3,10 @@
 {# replaces default content block #}
 {% block content %}
 <h3 style="color:blue;">Hello, {{ username }}!</h3> 
-    
-<h4> Manage my Stars </h4>
+
+<h4> Profile and Preferences </h4>
+
+<h4> Manage my Starred Posts </h4>
 {% for star in stars %}
 <p>---<br>
 Title: <a href="{{ url_for('displayPost',pid=star['pid']) }}">{{ star['title'] }}</a><br>
@@ -22,21 +24,31 @@ Content: {{ star['content'] }}<br>
 
 <h4> Manage my Followed Tags </h4>
 {% for follow in follows %}
-<p>---<br>
-Title: <a href="{{ url_for('searchTag',tag=follow['tag_name']) }}">{{ follow['tag_name'] }}</a><br>
+<p>---
+<br>
+Tag: <a href="{{ url_for('searchTag',tag=follow['tag_name']) }}">{{ follow['tag_name'] }}</a>
+<form method="post" action="{{ url_for('followAjax') }}">
+    <input type="hidden" name="tid" class="tid" value="{{ follow.tid }}">
+    <input type="hidden" name="followed" class="followed" value="{{ follow.followed }}">
+    <label class = "follow-tag">
+        <input type="button" name="follow-tag" value="{{'Followed -- Click to unfollow' if follow.followed == '1' else 'Follow the Tag'}}">
+    </label>
+</form>
+---<br>
 </p>
 {% endfor %}
 
 <h4> <a href=" {{url_for('updateProfile')}} ">Profile and Preferences</a> </h4>
-<h4> Manage my posts </h4>
+
+<h4> Manage my Created Posts </h4>
 {% for post in posts %}
 <p>---<br>
 Title: <a href="{{ url_for('displayPost',pid=post['pid']) }}">{{ post['title'] }}</a><br>
 Content: {{ post['content'] }}<br>
 ---<br>
 </p>
-{% endfor %}
 
+{% endfor %}
 
 {% endblock %}
 
@@ -74,6 +86,48 @@ Content: {{ post['content'] }}<br>
             button.closest("form").find("input[name=starred]").val(obj.starred);
         }
     }
-</script>
 
+    var URL = "{{ url_for('followAjax') }}";
+    
+    $("label.follow-tag").on("click", function (event) {
+        event.preventDefault();
+        var followed = $(event.target).closest("form").find("input[name='followed']").val();
+       // var followed = $(event.target).closest("form").find("input[name='followed']").is(":checked");
+        console.log("follow: " + followed);
+        // if(!followed) {
+        // if (event.target != this) return;
+            // followed = true;
+        // } else {
+            // followed = false;
+        // }
+        var tid = $(event.target).closest("form").find("input[name='tid']").val();
+        var button = $(this).find("input[name=follow-tag]");
+        sendFollow(tid,followed,button);
+    });
+    
+    function sendFollow(tid,followed,button) {
+        console.log("Sending "+tid +" and " + followed +" to the back end");
+        $.post(URL,{'error':false, 'tid': tid, 'followed': followed},
+        function(data,status){
+            updateFollow(data,button);
+        },'json');
+    }
+    
+    function updateFollow(obj,button) {
+        console.log(obj);
+        if(obj.error) {
+            // $("#errors").empty().html('Error: '+obj.err);
+            alert(obj.err);
+        } else {
+            console.log("changing follow status to be " + obj.followed)
+            if (obj.followed == "1") {
+                button.val('Followed -- Click to unfollow');
+            } else {
+                //button.closest("form").find("input[name=followed]").prop(checked, false);
+                button.val('Follow the Tag');
+            }
+            button.closest("form").find("input[name=followed]").val(obj.followed);
+        }
+    }
+</script>
 {% endblock %}

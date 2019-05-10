@@ -3,7 +3,7 @@ body {
 }
 
 h1 {
-    color: mediumaquamarine;
+    color: navy;
     font-family: 'Comic Sans MS';
 }
 
@@ -16,7 +16,7 @@ ul {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: teal;
+  background-color: navy;
 }
 
 
@@ -34,7 +34,7 @@ li a {
 
 /* Change the link color to #111 (black) on hover */
 li a:hover {
-  background-color: lightseagreen;
+  background-color: lightskyblue;
 }
 
 table {

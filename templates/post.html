@@ -38,7 +38,6 @@
     
     $("label.star-event").on("click", function (event) {
         event.preventDefault();
-        alert("hi");
         var starred = $(event.target).closest("form").find("input[name='starred']").val();
         console.log(starred);
         var pid = $(event.target).closest("form").find("input[name='pid']").val();

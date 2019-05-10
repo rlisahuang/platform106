@@ -11,7 +11,6 @@ The main file of the app.
 from flask import (Flask, render_template, make_response, url_for, request,
                    redirect, flash, session, send_from_directory,jsonify)
 from werkzeug import secure_filename
-from twilio.rest import Client
 
 app = Flask(__name__)
 
@@ -42,6 +41,9 @@ def tagsList():
     
     conn = info.getConn('c9')
     tags = info.getTags(conn)
+    nums = info.getNumPostsThatUseTag(conn)
+    print(nums)
+    #need to add nums info to tags dictionary
     for tag in tags:
         followed = info.isFollowed(conn, tag['tid'], session.get('username'))
         if followed == None:
@@ -49,6 +51,7 @@ def tagsList():
         else:
             followed = "1"
         tag['followed'] = followed
+        
     
     return render_template('tagsList.html', title = "Tags List", tags=tags, logged_in=logged_in)
     
@@ -64,21 +67,22 @@ def userPortal():
     stars = info.displayStarredEvents(conn,usr)
     posts = info.displayPostsByUser(conn,usr)
     follows = info.displayFollowedTags(conn,usr)
-    tags = info.getTags(conn)
     
     for star in stars:
         isStarred = info.isStarred(conn,star['pid'],usr)
         starred = "0" if isStarred is None else "1"
         star['starred'] = starred
             
-    for tag in tags:
-        isFollowed = info.isFollowed(conn, tag['tid'], usr)
-        followed = "0" if isFollowed is None else "1"
-        tag['followed'] = followed
-        
+    for follow in follows:
+        followed = info.isFollowed(conn, follow['tid'], usr)
+        if followed == None:
+            followed = "0"
+        else:
+            followed = "1"
+        follow['followed'] = followed
 
     return render_template('userPortal.html', title = "User Portal", stars=stars,
-                        posts=posts, follows=follows,username=usr,logged_in=logged_in)
+                        posts=posts, follows=follows, username=usr,logged_in=logged_in)
 
 @app.route('/userPortal/updateProfile/', methods=['GET','POST'])
 def updateProfile():
