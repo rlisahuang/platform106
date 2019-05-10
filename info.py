@@ -267,6 +267,14 @@ def getTags(conn):
     allTags = curs.fetchall()
     
     return allTags
+
+def getNumPostsThatUseTag(conn):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select tid, count(*) from tagged group by tid''')
+    nums = curs.fetchall()
+    
+    return nums
     
     
 if __name__ == '__main__':

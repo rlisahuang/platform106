@@ -40,6 +40,9 @@ def tagsList():
     
     conn = info.getConn('c9')
     tags = info.getTags(conn)
+    nums = info.getNumPostsThatUseTag(conn)
+    print(nums)
+    #need to add nums info to tags dictionary
     for tag in tags:
         followed = info.isFollowed(conn, tag['tid'], session.get('username'))
         if followed == None:
@@ -47,6 +50,7 @@ def tagsList():
         else:
             followed = "1"
         tag['followed'] = followed
+        
     
     return render_template('tagsList.html', title = "Tags List", tags=tags, logged_in=logged_in)
     
@@ -62,19 +66,17 @@ def userPortal():
     stars = info.displayStarredEvents(conn,usr)
     posts = info.displayPostsByUser(conn,usr)
     follows = info.displayFollowedTags(conn,usr)
-    tags = info.getTags(conn)
-    
-    for tag in tags:
-        followed = info.isFollowed(conn, tag['tid'], session.get('username'))
+    for follow in follows:
+        followed = info.isFollowed(conn, follow['tid'], session.get('username'))
         if followed == None:
             followed = "0"
         else:
             followed = "1"
-        tag['followed'] = followed
+        follow['followed'] = followed
     print(stars)
     print(follows)
     return render_template('userPortal.html', title = "User Portal", stars=stars,
-                        posts=posts, follows=follows,username=usr,logged_in=logged_in)
+                        posts=posts, follows=follows, followed=followed, username=usr,logged_in=logged_in)
 
 #Builds the create post page
 '''
