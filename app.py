@@ -11,7 +11,7 @@ The main file of the app.
 from flask import (Flask, render_template, make_response, url_for, request,
                    redirect, flash, session, send_from_directory,jsonify)
 from werkzeug import secure_filename
-from twilio.rest import Client
+#from twilio.rest import Client
 
 app = Flask(__name__)
 
