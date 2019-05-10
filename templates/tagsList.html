@@ -58,10 +58,7 @@
     });
     
     function sendFollow(tid,followed,button) {
-<<<<<<< HEAD
-=======
         //alert("I am " + followed);
->>>>>>> shrunothra
         console.log("Sending "+tid +" and " + followed +" to the back end");
         $.post(URL,{'error':false, 'tid': tid, 'followed': followed},
         function(data,status){
