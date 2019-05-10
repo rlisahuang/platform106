@@ -42,6 +42,13 @@ def tagsList():
     
     conn = info.getConn('c9')
     tags = info.getTags(conn)
+    for tag in tags:
+        followed = info.isFollowed(conn, tag['tid'], session.get('username'))
+        if followed == None:
+            followed = "0"
+        else:
+            followed = "1"
+        tag['followed'] = followed
     
     return render_template('tagsList.html', title = "Tags List", tags=tags, logged_in=logged_in)
     
@@ -56,9 +63,20 @@ def userPortal():
     usr=session.get('username')
     stars = info.displayStarredEvents(conn,usr)
     posts = info.displayPostsByUser(conn,usr)
-
+    follows = info.displayFollowedTags(conn,usr)
+    tags = info.getTags(conn)
+    
+    for tag in tags:
+        followed = info.isFollowed(conn, tag['tid'], session.get('username'))
+        if followed == None:
+            followed = "0"
+        else:
+            followed = "1"
+        tag['followed'] = followed
+    print(stars)
+    print(follows)
     return render_template('userPortal.html', title = "User Portal", stars=stars,
-                        posts=posts, username=usr,logged_in=logged_in)
+                        posts=posts, follows=follows,username=usr,logged_in=logged_in)
 
 @app.route('/userPortal/updateProfile/', methods=['GET','POST'])
 def updateProfile():
@@ -86,6 +104,7 @@ def updateProfile():
         print("Phone number of ({}) was updated successfully.".format(usr))
         
         return redirect(url_for('updateProfile'))
+
 
 #Builds the create post page
 @app.route('/createPost', methods=['GET','POST'])
@@ -346,24 +365,25 @@ def followAjax():
         conn = info.getConn('c9')
         usr = session.get('username')
         tid = request.form.get('tid')
-        followed = info.isFollowed(conn,tid,usr)
+        followed = request.form.get('followed')
+        print(followed)
 
         # check if user is logged in
         if usr is not None:
-            if followed is None:
+            if followed == "0":
                 print(tid)
                 print(usr)
                 info.followTag(conn,tid,usr)
-                print("post {} is starred by user {}".format(tid,usr))
-                return jsonify( {'error':False, 'tid': tid, 'followed': True} )
+                print("post {} is followed by user {}".format(tid,usr))
+                return jsonify( {'error':False, 'tid': tid, 'followed': "1"} )
             else:
                 info.unfollowTag(conn,tid,usr)
                 print("post {} is unfollowed by user {}".format(tid,usr))
-                return jsonify( {'error':False, 'tid': tid, 'followed': False} )
+                return jsonify( {'error':False, 'tid': tid, 'followed': "0"} )
         else:
             print("Need to login")
             return jsonify( {'error': True, 'err': "need to login"} )
 
 if __name__ == '__main__':
     app.debug = True
-    app.run('0.0.0.0',8081)
+    app.run('0.0.0.0',8082)
