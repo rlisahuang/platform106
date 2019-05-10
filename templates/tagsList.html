@@ -28,10 +28,10 @@
             <td class="num_followers">{{ tag.num_followers }}</td>
             <td>
                 <form method="post" action="{{ url_for('followAjax') }}">
-                    <label class="tid"><input type="hidden" name="tid" id="tid" value="{{ tag.tid }}"></label>
-                    <label class="followed"></label><input type="hidden" name="followed" id="followed" value="{{ tag.followed }}">
-                    <label class="follow-tag">
-                        <input id="follow-tag" type="button" name="follow-tag" value="{{'Followed -- Click to unfollow' if tag.followed else 'Follow the Tag'}}">
+                    <label class="tid"><input type="hidden" name="tid" class="tid" value="{{ tag.tid }}"></label>
+                    <label class="followed"><input type="hidden" name="followed" class="followed" value="{{ tag.followed }}"></label>
+                    <label class = "follow-tag">
+                        <input type="button" name="follow-tag" value="{{'Followed -- Click to unfollow' if tag.followed == '1' else 'Follow the Tag'}}">
                     </label>
                 </form>
             </td>
@@ -52,19 +52,12 @@
         var followed = $(event.target).closest("form").find("input[name='followed']").val();
        // var followed = $(event.target).closest("form").find("input[name='followed']").is(":checked");
         console.log("follow: " + followed);
-        // if(!followed) {
-        // if (event.target != this) return;
-            // followed = true;
-        // } else {
-            // followed = false;
-        // }
         var tid = $(event.target).closest("form").find("input[name='tid']").val();
         var button = $(this).find("input[name=follow-tag]");
         sendFollow(tid,followed,button);
     });
     
     function sendFollow(tid,followed,button) {
-        alert("I am " + followed);
         console.log("Sending "+tid +" and " + followed +" to the back end");
         $.post(URL,{'error':false, 'tid': tid, 'followed': followed},
         function(data,status){
