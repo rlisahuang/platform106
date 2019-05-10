@@ -11,6 +11,10 @@ The main file of the app.
 from flask import (Flask, render_template, make_response, url_for, request,
                    redirect, flash, session, send_from_directory,jsonify)
 from werkzeug import secure_filename
+<<<<<<< HEAD
+=======
+#from twilio.rest import Client
+>>>>>>> shrunothra
 
 app = Flask(__name__)
 
