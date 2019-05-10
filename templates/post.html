@@ -17,20 +17,60 @@
 <p>Event time: {{ post.event_time }}</p>
 <p>Time created: {{ post.time_created }}</p>
 <p>Tags: {{ post.tags }}</p>
+
+{% if logged_in %}
 <form method="post" action="{{ url_for('starAjax') }}">
-    <label for="pid"><input type="hidden" name="pid" id="pid" value="{{ post.pid }}"></label>
-    <label for="starred"><input type="hidden" name="starred" id="starred" value="{{ post.starred }}"></label>
-    <label for="star-event">
-        <input id="star-event" type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred else 'Star the Event'}}">
+    <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ post.pid }}"></label>
+    <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ post.starred }}"></label>
+    <label class ="star-event">
+        <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred == '1' else 'Star the Event'}}">
     </label>
 </form>
+{% endif %}
+
 {% endif %}
 
 {% endblock %}
 
 {% block jquery_scripts %}
 <script>
-    var starred = $("#starred").val();
+    var star_URL = "{{ url_for('starAjax') }}";
+    
+    $("label.star-event").on("click", function (event) {
+        event.preventDefault();
+        alert("hi");
+        var starred = $(event.target).closest("form").find("input[name='starred']").val();
+        console.log(starred);
+        var pid = $(event.target).closest("form").find("input[name='pid']").val();
+        console.log(pid);
+        var button = $(this).find("input[name=star-event]");
+        sendStar(pid,starred,button);
+    });
+    
+    function sendStar(pid,starred,button) {
+        console.log("Sending "+pid +" and " + starred +" to the back end");
+        $.post(star_URL,{'error':false, 'pid': pid, 'starred': starred},
+        function(data,status){
+            updateStar(data,button);
+        },'json');
+    }
+    
+    function updateStar(obj,button) {
+        console.log(obj);
+        if(obj.error) {
+            alert(obj.err);
+        } else {
+            console.log("changing star status to be " + obj.starred)
+            if (obj.starred == "1") {
+                button.val('Starred -- Click to unstar');
+            } else {
+                button.val('Star the Event');
+            }
+            button.closest("form").find("input[name=starred]").val(obj.starred);
+        }
+    }
+
+    /*var starred = $("#starred").val();
     var URL = "{{ url_for('starAjax') }}";
     
     $("#star-event").on("click", function (event) {
@@ -66,6 +106,6 @@
                 $("#star-event").val('Star the Event');
             }
         }
-    }
+    }*/
 </script>
 {% endblock %}

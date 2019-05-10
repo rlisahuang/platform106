@@ -66,15 +66,17 @@ def userPortal():
     follows = info.displayFollowedTags(conn,usr)
     tags = info.getTags(conn)
     
+    for star in stars:
+        isStarred = info.isStarred(conn,star['pid'],usr)
+        starred = "0" if isStarred is None else "1"
+        star['starred'] = starred
+            
     for tag in tags:
-        followed = info.isFollowed(conn, tag['tid'], session.get('username'))
-        if followed == None:
-            followed = "0"
-        else:
-            followed = "1"
+        isFollowed = info.isFollowed(conn, tag['tid'], usr)
+        followed = "0" if isFollowed is None else "1"
         tag['followed'] = followed
-    print(stars)
-    print(follows)
+        
+
     return render_template('userPortal.html', title = "User Portal", stars=stars,
                         posts=posts, follows=follows,username=usr,logged_in=logged_in)
 
@@ -158,18 +160,22 @@ def createPost():
 @app.route('/posts/<int:pid>')
 def displayPost(pid):
     logged_in = session.get('logged_in', False)
-    if not logged_in: # the link is only available after the user is logged in
-        flash("Please log in!")
-        return redirect(url_for("login"))
+    # if not logged_in: # the link is only available after the user is logged in
+    #     flash("Please log in!")
+    #     return redirect(url_for("login"))
     conn = info.getConn('c9')
-    
-    username = session.get('username')
-    starred = info.isStarred(conn,pid,username)
-    isAuthor = info.isAuthor(conn,pid,username)
     postInfo = info.readOnePost(conn,pid)
-    postInfo["starred"] = starred
     
-    return render_template('post.html',isAuthor=isAuthor,post=postInfo,logged_in=session.get('logged_in',False))
+    if logged_in:
+        username = session.get('username')
+        starred = info.isStarred(conn,pid,username)
+        isAuthor = info.isAuthor(conn,pid,username)
+        postInfo["starred"] = "0" if starred is None else "1"
+    
+        return render_template('post.html',isAuthor=isAuthor,post=postInfo,logged_in=session.get('logged_in',False))
+    
+    else:
+        return render_template('post.html',post=postInfo,logged_in=session.get('logged_in',False))
     
 @app.route('/updatePost/<int:pid>',methods=['GET','POST'])
 def updatePost(pid):
@@ -243,9 +249,9 @@ def advancedSearch():
 @app.route('/generalFeed/')
 def generalFeed():
     logged_in = session.get('logged_in', False)
-    if not logged_in: # the link is only available after the user is logged in
-        flash("Please log in!")
-        return redirect(url_for("login"))
+    # if not logged_in: # the link is only available after the user is logged in
+        # flash("Please log in!")
+        # return redirect(url_for("login"))
     keyword = session.pop('keyword','')
     tags = session.pop('tags','')
     conn = info.getConn('c9')
@@ -340,20 +346,20 @@ def starAjax():
         conn = info.getConn('c9')
         usr = session.get('username')
         pid = request.form.get('pid')
-        starred = info.isStarred(conn,pid,usr)
+        starred = request.form.get('starred')
 
         # check if user is logged in
         if usr is not None:
-            if starred is None:
-                print(pid)
-                print(usr)
+            print(starred)
+            print(type(starred))
+            if starred == "0":
                 info.starPost(conn,pid,usr)
                 print("post {} is starred by user {}".format(pid,usr))
-                return jsonify( {'error':False, 'pid': pid, 'starred': True} )
+                return jsonify( {'error':False, 'pid': pid, 'starred': "1"} )
             else:
                 info.unstarPost(conn,pid,usr)
                 print("post {} is unstarred by user {}".format(pid,usr))
-                return jsonify( {'error':False, 'pid': pid, 'starred': False} )
+                return jsonify( {'error':False, 'pid': pid, 'starred': "0"} )
         else:
             print("Need to login")
             return jsonify( {'error': True, 'err': "need to login"} )

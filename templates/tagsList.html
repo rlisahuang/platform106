@@ -50,7 +50,6 @@
     $("label.follow-tag").on("click", function (event) {
         event.preventDefault();
         var followed = $(event.target).closest("form").find("input[name='followed']").val();
-       // var followed = $(event.target).closest("form").find("input[name='followed']").is(":checked");
         console.log("follow: " + followed);
         var tid = $(event.target).closest("form").find("input[name='tid']").val();
         var button = $(this).find("input[name=follow-tag]");
@@ -75,7 +74,6 @@
             if (obj.followed == "1") {
                 button.val('Followed -- Click to unfollow');
             } else {
-                //button.closest("form").find("input[name=followed]").prop(checked, false);
                 button.val('Follow the Tag');
             }
             button.closest("form").find("input[name=followed]").val(obj.followed);
