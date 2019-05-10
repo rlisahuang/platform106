@@ -84,10 +84,6 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
     previous_pid = previous_pid_dict["LAST_INSERT_ID()"]
     print(previous_pid)
     
-    # # insert into `posted` as well
-    # curs.execute("""insert into posted (pid,username) values (%s,%s)""",(previous_pid,username))
-    # conn.commit()
-    
     #inserting new tags into the tags table
     for tag in tags:
         curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", [tag])
@@ -268,6 +264,35 @@ def getTags(conn):
     
     return allTags
     
+def getUserPhone(conn,username):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select phoneNum from accounts where username = %s''',[username])
+    phoneNum = curs.fetchone()
+    
+    return phoneNum
+    
+def updateUserPhone(conn,username,newNum):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''update accounts set phoneNum = %s where username = %s''',(newNum,username))
+    conn.commit()
+    
+def getTotalStarsByPost(conn,pid):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select count(*) from starred group by pid having pid = %s''',[pid])
+    numStars = curs.fetchone()
+    
+    return numStars # {'count(*)': 1}
+    
+def getTotalStarsByUser(conn,username):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select count(*) from starred group by username having username = %s''',[username])
+    numStars = curs.fetchone()
+    
+    return numStars # {'count(*)': 1}
     
 if __name__ == '__main__':
     conn = getConn('c9')
@@ -285,8 +310,13 @@ if __name__ == '__main__':
     # print(author18) # true
     # author2 = isAuthor(conn,2,'wendy')
     # print(author2) # false
-    onePost = readOnePost(conn,19)
-    a =  onePost['event_time']
-    time_obj = datetime.datetime.strptime(str(a),'%I:%M:%S').time()
-    print(type(time_obj))
-    print(str(time_obj)[:5])
+    # onePost = readOnePost(conn,19)
+    # a =  onePost['event_time']
+    # time_obj = datetime.datetime.strptime(str(a),'%I:%M:%S').time()
+    # print(type(time_obj))
+    # print(str(time_obj)[:5])
+    n = getUserPhone(conn,"wendy")
+    if n['phoneNum']:
+        print("happy")
+    else:
+        print("sad")

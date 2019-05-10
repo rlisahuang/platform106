@@ -28,9 +28,9 @@
             <td class="num_followers">{{ tag.num_followers }}</td>
             <td>
                 <form method="post" action="{{ url_for('followAjax') }}">
-                    <input type="hidden" name="tid" id="tid" value="{{ tag.tid }}">
-                    <input type="hidden" name="followed" id="followed" value="{{ tag.followed }}">
-                    <label for="follow-tag">
+                    <label class="tid"><input type="hidden" name="tid" id="tid" value="{{ tag.tid }}"></label>
+                    <label class="followed"></label><input type="hidden" name="followed" id="followed" value="{{ tag.followed }}">
+                    <label class="follow-tag">
                         <input id="follow-tag" type="button" name="follow-tag" value="{{'Followed -- Click to unfollow' if tag.followed else 'Follow the Tag'}}">
                     </label>
                 </form>

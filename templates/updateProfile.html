@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+<a href="{{ url_for('userPortal') }}">Back to User Portal</a>
+ 
+<p>Fill out this form to UPDATE your contact information for event notifications:</p>
+    <form method=POST action={{ url_for("updateProfile") }}>
+        
+    <fieldset>
+        <table>
+        <tr><td><label for="phoneNum">Phone Number:</label></td>
+            <td><input type="text" name="phoneNum" id="phoneNum" value="{{ num }}"></td></tr>
+        </table>
+        
+    </fieldset>
+
+        <p> <input type="submit" name="submit" value="update"></p>
+
+    </form>
+{% endblock %}

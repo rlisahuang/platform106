@@ -20,7 +20,7 @@ Title: <a href="{{ url_for('searchTag',tag=follow['tag_name']) }}">{{ follow['ta
 </p>
 {% endfor %}
 
-<h4> Profile and Preferences </h4>
+<h4> <a href=" {{url_for('updateProfile')}} ">Profile and Preferences</a> </h4>
 <h4> Manage my posts </h4>
 {% for post in posts %}
 <p>---<br>
@@ -31,8 +31,4 @@ Content: {{ post['content'] }}<br>
 {% endfor %}
 
 
-<!--<form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>-->
-<!--    <input id="searchterm" placeholder="Search" name="searchterm"/>-->
-<!--    <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>-->
-<!--</form>-->
 {% endblock %}

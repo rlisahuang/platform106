@@ -18,8 +18,8 @@
 <p>Time created: {{ post.time_created }}</p>
 <p>Tags: {{ post.tags }}</p>
 <form method="post" action="{{ url_for('starAjax') }}">
-    <input type="hidden" name="pid" id="pid" value="{{ post.pid }}">
-    <input type="hidden" name="starred" id="starred" value="{{ post.starred }}">
+    <label for="pid"><input type="hidden" name="pid" id="pid" value="{{ post.pid }}"></label>
+    <label for="starred"><input type="hidden" name="starred" id="starred" value="{{ post.starred }}"></label>
     <label for="star-event">
         <input id="star-event" type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred else 'Star the Event'}}">
     </label>

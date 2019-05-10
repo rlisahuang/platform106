@@ -14,21 +14,14 @@
 {# replaces default content block #}
 {% block content %}
 
-{# 
- <form id="search" method=POST action="{{url_for('search')}}">
-        <input id="searchterm" placeholder="Search" name="searchterm">
-        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
-</form>
-#}
-
 <p>Please login using your Wellesley account information:</p>
   
  
 <form id="joinform" style="display: none;" action="{{url_for('join')}}" method="post">
     <h2>Join</h2>
-    <p><label>Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
-    <p><label>Password: <input type="password" name="password1" required></label></p>
-    <p><label>Password again: <input type="password" name="password2" required></label></p>
+    <p><label for="username_reg">Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
+    <p><label for="password_reg">Password: <input type="password" name="password1" required></label></p>
+    <p><label for="password2_reg">Password again: <input type="password" name="password2" required></label></p>
     <p><button id="register-btn" type="submit">Register</button> 
         <button type="" id="register2login">I have an account</button></p>
 </form>
@@ -36,8 +29,8 @@
     
 <form id="loginform" style="display: block;" action="{{url_for('loginAction')}}" method="post">
     <h2>Login</h2>
-    <p><label>Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
-    <p><label>Password: <input type="password" name="password" required></label></p>
+    <p><label for="username_login">Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
+    <p><label for="password_login">Password: <input type="password" name="password" required></label></p>
     <p><button type="submit" id="login-btn">Login</button> 
         <button type="" id="login2register">I don't have an account</button></p>
 </form>
@@ -54,18 +47,18 @@
 $("#joinform").on('submit', function (event) {
      var pw1 = $(this).find('[name=password1]').val();
      var pw2 = $(this).find('[name=password2]').val();
-     // should also check for length and common words etc
      if( pw1 != pw2 ) {
-         // something more sophisticated than alert would be nice
          alert("passwords don't match");
      }
 });
 
+// event handler to switch from login mode to register
 $("#login2register").on('click',function(){
     $("#joinform").show();
     $("#loginform").hide();
 });
 
+// event handler to switch from register mode to login
 $("#register2login").on('click',function(){
     $("#loginform").show();
     $("#joinform").hide();

@@ -14,7 +14,7 @@
 <br>
 Search:
     <form id="basicSearch" method="POST" action="{{ url_for("basicSearch") }}">
-        <input id="searchterm" placeholder="Search" name="searchterm"/>
+        <label for="basicSearch"><input id="searchterm" placeholder="Search" name="searchterm"/></label>
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>
 {% endblock %}

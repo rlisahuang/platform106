@@ -11,6 +11,8 @@ The main file of the app.
 from flask import (Flask, render_template, make_response, url_for, request,
                    redirect, flash, session, send_from_directory,jsonify)
 from werkzeug import secure_filename
+from twilio.rest import Client
+
 app = Flask(__name__)
 
 import datetime
@@ -58,15 +60,34 @@ def userPortal():
     return render_template('userPortal.html', title = "User Portal", stars=stars,
                         posts=posts, username=usr,logged_in=logged_in)
 
+@app.route('/userPortal/updateProfile/', methods=['GET','POST'])
+def updateProfile():
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
     
+    # information from database
+    conn = info.getConn('c9')
+    usr=session.get('username')
+    oldNum = info.getUserPhone(conn,usr)
+    if request.method == "GET":
+        # set up the page and pre-fill the form using info from database
+        if oldNum['phoneNum']:
+            num = oldNum['phoneNum']
+        else:
+            num = ""
+        return render_template('updateProfile.html', num=num,logged_in=session.get('logged_in',False))
+    else:
+        # the update function, grab info filled in by the user
+        newNum = request.form.get("phoneNum")
+
+        info.updateUserPhone(conn, usr, newNum)
+        print("Phone number of ({}) was updated successfully.".format(usr))
+        
+        return redirect(url_for('updateProfile'))
+
 #Builds the create post page
-'''
-Potential Issue: <SOLVED>
-So far, we have not specified who creates the post in the backend. Despite that
-any user could create posts after logging in, in the database we don't know the 
-authors of the posts. This is a feature to be implemented in the next stage to
-help us display posts that are created by a certain user in their userPortal.
-'''
 @app.route('/createPost', methods=['GET','POST'])
 def createPost():
     logged_in = session.get('logged_in', False)
@@ -168,6 +189,7 @@ def updatePost(pid):
 
             info.updatePost(conn,pid, title, content, location, None,time,date,session.get('username'),oldtags,newtags)
             print("Post ({}) was updated successfully.".format(pid))
+            
             return redirect(url_for('displayPost',pid=pid))
     
 # url for simple search FORM
