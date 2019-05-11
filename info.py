@@ -333,8 +333,5 @@ if __name__ == '__main__':
     # time_obj = datetime.datetime.strptime(str(a),'%I:%M:%S').time()
     # print(type(time_obj))
     # print(str(time_obj)[:5])
-    n = getUserPhone(conn,"wendy")
-    if n['phoneNum']:
-        print("happy")
-    else:
-        print("sad")
+    n = readOnePost(conn,1)
+    print(n)

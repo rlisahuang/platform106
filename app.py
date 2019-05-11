@@ -133,12 +133,11 @@ def createPost():
     if request.method == 'GET':
         #blank form rendered when page is first visited
         return render_template('createPost.html', 
-                          title="Create a Post!",post=session.get('newpost',None), logged_in=logged_in)
+                          title="Create a Post!",post=None, logged_in=logged_in)
                           
     else:
         #flash warning messages if form is filled out incorrectly
-        
-        error = False
+
         title = request.form.get('post-title','')
         content = request.form.get('post-content','')
         location = request.form.get('post-location','')
@@ -146,24 +145,11 @@ def createPost():
         event_date = request.form.get('post-eventdate','')
         tags = request.form.get('post-tags','')
         picture = request.files.get('post-picture',None)
-        print(picture)
-        
+
         newpost = {"title":title,"content":content,"location":location,
                 "event_time":event_time,"event_date":event_date, "tags":tags,'picture':picture}
 
-        if title == "":
-            flash('Missing value: Please enter a title for your event!')
-            error = True
-        if location == "":
-            flash('Missing value: Please enter a location for your event!')
-            error = True
-        if event_date == "":
-            flash('Missing value: Please enter a date for your event!')
-            error = True
-        if event_time == "":
-            flash('Missing value: Please enter a time for your event!')
-            error = True
-
+        error = checkRequiredInfo(title,location,event_date,event_time)
 
         # test if any errors occured then take user back to insert page, with 
         # the info that they already provided prefilled
@@ -172,41 +158,59 @@ def createPost():
         else: 
             pid = info.insertPost(conn, title, content, location, event_time, event_date, tags.split(','), session.get('username'))
             
-            try: #Handing the image uploading
-                fsize = os.fstat(picture.stream.fileno()).st_size
-                print 'file size is ',type(fsize)
-                # if fsize == 0:
-                    # return render_template('createPost.html', title="Create a Post!",post=newpost, logged_in=logged_in)
-                if fsize > app.config['MAX_UPLOAD']:
-                    raise Exception('File is too big')
-                mime_type = imghdr.what(picture)
-                if mime_type.lower() not in ['jpeg','gif','png']:
-                    raise Exception('Not a JPEG, GIF or PNG: {}'.format(mime_type))
-                filename = secure_filename("{}.{}".format(pid,mime_type))
-                print(filename)
-                pathname = os.path.join(app.config['UPLOADS'],filename)
-                picture.save(pathname)
-                flash('Upload successful')
-                conn = info.getConn('c9')
-                curs = conn.cursor()
-                curs.execute('''UPDATE posts 
-                                SET imagefile = %s
-                                WHERE pid = %s''',
-                             [filename, pid])
-                            #test if any errors occured then take user back to insert page
-                conn.commit()
-            
-            
+            if picture is None:
                 return redirect(url_for('displayPost', pid=pid))
-        
-            except Exception as err:
-                flash('Upload failed {why}'.format(why=err))
-                #blank form rendered when page is first visited
-                return render_template('createPost.html', 
-                                  title="Create a Post!",post=newpost, logged_in=logged_in)
+            else:
+                try: #Handing the image uploading
+                    fsize = os.fstat(picture.stream.fileno()).st_size
+                    print 'file size is ',type(fsize)
+                    # if fsize == 0:
+                        # return render_template('createPost.html', title="Create a Post!",post=newpost, logged_in=logged_in)
+                    if fsize > app.config['MAX_UPLOAD']:
+                        raise Exception('File is too big')
+                    mime_type = imghdr.what(picture)
+                    if mime_type.lower() not in ['jpeg','gif','png']:
+                        raise Exception('Not a JPEG, GIF or PNG: {}'.format(mime_type))
+                    filename = secure_filename("{}.{}".format(pid,mime_type))
+                    print(filename)
+                    pathname = os.path.join(app.config['UPLOADS'],filename)
+                    picture.save(pathname)
+                    conn = info.getConn('c9')
+                    curs = conn.cursor()
+                    curs.execute('''UPDATE posts 
+                                    SET imagefile = %s
+                                    WHERE pid = %s''',
+                                 [filename, pid])
+                                #test if any errors occured then take user back to insert page
+                    conn.commit()
                 
+                
+                    return redirect(url_for('displayPost', pid=pid))
+            
+                except Exception as err:
+                    flash('Upload failed {why}'.format(why=err))
+                    #blank form rendered when page is first visited
+                    return render_template('createPost.html', 
+                                      title="Create a Post!",post=newpost, logged_in=logged_in)
+                
+# helper function that checks if all required information is provided
+def checkRequiredInfo(title, location, event_date, event_time):
+    error = False
+    
+    if title == "":
+        flash('Missing value: Please enter a title for your event!')
+        error = True
+    if location == "":
+        flash('Missing value: Please enter a location for your event!')
+        error = True
+    if event_date == "":
+        flash('Missing value: Please enter a date for your event!')
+        error = True
+    if event_time == "":
+        flash('Missing value: Please enter a time for your event!')
+        error = True
         
-
+    return error
 
 # url for post page
 @app.route('/posts/<int:pid>')
@@ -238,6 +242,7 @@ def pic(pid):
         val = ""
     else:
         val = send_from_directory(app.config['UPLOADS'],pic)
+        print("val: ",val)
     return val
 
  
@@ -265,9 +270,13 @@ def updatePost(pid):
     else:
         # the delete function, flash message and redirect to home page
         if request.form.get('submit') == 'delete':
+            filename = post['imagefile']
             info.deletePost(conn,pid)
+            os.remove(os.path.join(app.config['UPLOADS'], filename))
+            flash("Post ({}) was deleted successfully.".format(pid))
             print("Post ({}) was deleted successfully.".format(pid))
             return redirect(url_for('userPortal'))
+       
         # the update function, grab info filled in by the user
         else:
             title = request.form.get('post-title')
@@ -277,44 +286,41 @@ def updatePost(pid):
             time = request.form.get('post-eventtime')
             newtags = request.form.get('post-tags','').split(',')
             picture = request.files.get('post-picture',None)
-            print(picture)
+            
+            error = checkRequiredInfo(title,location,date,time)
+            
+            if error:
+                return render_template('updatePost.html', title="Update a Post!",post=post, logged_in=logged_in)
 
-            info.updatePost(conn,pid, title, content, location, None,time,date,session.get('username'),oldtags,newtags)
-            print("Post ({}) was updated successfully.".format(pid))
-            
-            try: #Handing the image uploading
-                fsize = os.fstat(picture.stream.fileno()).st_size
-                print 'file size is ',type(fsize)
-               
-                if fsize > app.config['MAX_UPLOAD']:
-                    raise Exception('File is too big')
-                mime_type = imghdr.what(picture)
-                if mime_type.lower() not in ['jpeg','gif','png']:
-                    raise Exception('Not a JPEG, GIF or PNG: {}'.format(mime_type))
-                filename = secure_filename("{}.{}".format(pid,mime_type))
-                print(filename)
-                pathname = os.path.join(app.config['UPLOADS'],filename)
-                picture.save(pathname)
-                flash('Upload successful')
+            if picture is None: # no new pic uploaded by user, use the existing pic (if any) by default
                 conn = info.getConn('c9')
-                curs = conn.cursor()
-                curs.execute('''UPDATE posts 
-                                SET imagefile = %s
-                                WHERE pid = %s''',
-                             [filename, pid])
-                            #test if any errors occured then take user back to insert page
-                conn.commit()
-            
-            
-                return redirect(url_for('displayPost', pid=pid))
+                curs = conn.cursor(MySQLdb.cursors.DictCursor)
+                curs.execute('''select pid,imagefile from posts where pid = %s''', [pid])
+                filename = curs.fetchone()['imagefile']
+
+            else: # user uploaded a new pic
+                try: #Handing the image uploading
+                    fsize = os.fstat(picture.stream.fileno()).st_size
+
+                    if fsize > app.config['MAX_UPLOAD']:
+                        raise Exception('File is too big')
+                    mime_type = imghdr.what(picture)
+                    if mime_type.lower() not in ['jpeg','gif','png']:
+                        raise Exception('Not a JPEG, GIF or PNG: {}'.format(mime_type))
+                    filename = secure_filename("{}.{}".format(pid,mime_type))
+                    print(filename)
+                    pathname = os.path.join(app.config['UPLOADS'],filename)
+                    picture.save(pathname)
+                
+                except Exception as err:
+                    flash('Upload failed {why}'.format(why=err))
+                    return render_template('updatePost.html', 
+                                      title="Update a Post!",post=post, logged_in=logged_in)
+
+            info.updatePost(conn,pid, title, content, location, filename,time,date,session.get('username'),oldtags,newtags)
         
-            except Exception as err:
-                flash('Upload failed {why}'.format(why=err))
-                #blank form rendered when page is first visited
-                return render_template('updatePost.html', 
-                                  title="Update a Post!",post=post, logged_in=logged_in)
-            
-   
+            print("Post ({}) was updated successfully.".format(pid))
+            return redirect(url_for('displayPost', pid=pid))
             
                                   
 # url for simple search FORM
@@ -349,14 +355,19 @@ def advancedSearch():
 @app.route('/generalFeed/')
 def generalFeed():
     logged_in = session.get('logged_in', False)
-    # if not logged_in: # the link is only available after the user is logged in
-        # flash("Please log in!")
-        # return redirect(url_for("login"))
     keyword = session.pop('keyword','')
     tags = session.pop('tags','')
     conn = info.getConn('c9')
     posts = info.searchPosts(conn,keyword,tags)
     tagHolder = "enter tags separated by comma: e.g. cs, club" if (tags != '') else tags
+    
+    if logged_in:
+        for post in posts:
+            isStarred = info.isStarred(conn,post['pid'],session.get('username'))
+            print(isStarred)
+            post['starred'] = "0" if isStarred is None else "1"
+            print(post)
+    
     
     return render_template('generalFeed.html',title = "General Feed", keyword=keyword,tags=tagHolder,posts=posts,logged_in=session.get('logged_in',False))    
 
