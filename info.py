@@ -1,8 +1,8 @@
 #!/usr/bin/python2.7
 '''
-Platform 106 -- Draft Version
+Platform 106 -- Alpha Version
 Authors: Lisa Huang, Shrunothra Ambati, Jocelyn Shiue
-Date: 04/19/2019
+Date: 05/13/2019
 
 info.py
 File that contains functions for the backend.

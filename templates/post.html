@@ -74,43 +74,5 @@
             button.closest("form").find("input[name=starred]").val(obj.starred);
         }
     }
-
-    /*var starred = $("#starred").val();
-    var URL = "{{ url_for('starAjax') }}";
-    
-    $("#star-event").on("click", function (event) {
-        event.preventDefault();
-        if(!starred) {
-            if (event.target != this) return;
-            starred = true;
-        } else {
-            starred = false;
-        }
-        var pid = $(event.target).closest("form").find("input[name='pid']").val();
-        sendStar(pid,starred);
-    });
-    
-    function sendStar(pid,starred) {
-        console.log("Sending "+pid +" and " + starred +" to the back end");
-        $.post(URL,{'error':false, 'pid': pid, 'starred': starred},
-        function(data,status){
-            updateStar(data);
-        },'json');
-    }
-    
-    function updateStar(obj) {
-        console.log(obj);
-        if(obj.error) {
-            // $("#errors").empty().html('Error: '+obj.err);
-            alert(obj.err);
-        } else {
-            console.log("changing star status to be " + obj.starred)
-            if (obj.starred) {
-                $("#star-event").val('Starred -- Click to unstar');
-            } else {
-                $("#star-event").val('Star the Event');
-            }
-        }
-    }*/
 </script>
 {% endblock %}
