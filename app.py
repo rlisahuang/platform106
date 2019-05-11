@@ -161,9 +161,7 @@ def createPost():
         if event_time == "":
             flash('Missing value: Please enter a time for your event!')
             error = True
-        # if picture is None:
-        #      flash('Missing value: Please upload a picture for your event!')
-        #      error = True
+
 
         # test if any errors occured then take user back to insert page, with 
         # the info that they already provided prefilled
@@ -275,12 +273,11 @@ def updatePost(pid):
             location = request.form.get('post-location')
             date = request.form.get('post-eventdate')
             time = request.form.get('post-eventtime')
-            newtags = request.form.get('post-tags','')
+            newtags = request.form.get('post-tags','').split(',')
             picture = request.files.get('post-picture',None)
-            
+            print(picture)
 
-
-            info.updatePost(conn,pid, title, content, location, None,time,date,session.get('username'),oldtags,newtags.split(','))
+            info.updatePost(conn,pid, title, content, location, None,time,date,session.get('username'),oldtags,newtags)
             print("Post ({}) was updated successfully.".format(pid))
             
             try: #Handing the image uploading
@@ -302,7 +299,7 @@ def updatePost(pid):
                 curs.execute('''UPDATE posts 
                                 SET imagefile = %s
                                 WHERE pid = %s''',
-                             [pid, filename])
+                             [filename, pid])
                             #test if any errors occured then take user back to insert page
                 conn.commit()
             
@@ -313,7 +310,7 @@ def updatePost(pid):
                 flash('Upload failed {why}'.format(why=err))
                 #blank form rendered when page is first visited
                 return render_template('updatePost.html', 
-                                  title="Create a Post!",post=post, logged_in=logged_in)
+                                  title="Update a Post!",post=post, logged_in=logged_in)
             
    
             

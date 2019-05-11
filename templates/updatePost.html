@@ -4,7 +4,7 @@
 {% block content %}
  
 <p>Fill out this form to UPDATE an event post:</p>
-    <form method=POST action={{ url_for("updatePost",pid=post.pid) }}>
+    <form method=POST action={{ url_for("updatePost",pid=post.pid) }} enctype="multipart/form-data">
         
     <fieldset>
     <legend>Event Info</legend>
