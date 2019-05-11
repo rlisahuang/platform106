@@ -73,6 +73,7 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
     val = (title, content, location, 0, None, event_time, event_date,username)
     # time_created based on mysql's now() function, but it is in UTC instead of
     # UTC-4 -- may have to fixed this later
+    
     curs.execute("""INSERT INTO posts 
     (title, content, time_created, location, num_starred, imagefile, event_time, event_date,author) 
     VALUES (%s, %s, now(), %s, %s, %s, %s, %s,%s)""", val)
