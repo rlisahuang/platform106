@@ -175,7 +175,7 @@ def searchPosts(conn,keyword='',tags=''):
         The current implementation only allows for searching by keyword (basicSearch)
     or keyword+tags (advancedSearch). Potentially, we would also want to allow 
     users to search posts according to event date, location, etc. Changes to this
-    function might occur in the future.
+    function will occur in the beta version.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     if tags != '': # search with tags
@@ -195,11 +195,20 @@ def searchPosts(conn,keyword='',tags=''):
     return posts
 
 def isStarred(conn,pid,username):
+    ''' This post is used to determine whether a post has been starred. It returns
+        a dictionary with the pid and the username of the user if the user has
+        starred that post. Otherwise, it returns an empty set. 
+    '''
     curs = curs = conn.cursor(MySQLdb.cursors.DictCursor)
     curs.execute('''select * from starred where pid = %s and username = %s''',(pid,username))
     return curs.fetchone()
     
 def starPost(conn,pid,username):
+    ''' This function is used when a user wants to 'star' a post. It adds an entry
+        to the starred table that shows that the user has starred that post. It 
+        also updates the posts table to show the new number of stars that the 
+        post has.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     starred = isStarred(conn,pid,username)
     if starred is None:
@@ -209,6 +218,11 @@ def starPost(conn,pid,username):
         conn.commit()
     
 def unstarPost(conn,pid,username):
+    ''' This function is used when a user wants to 'unstar' a post. It removes
+        the relationship between that user and the post they unstarred from the 
+        starred table. It also updates the posts table to reflect the new number 
+        of stars that that post has. 
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     starred = isStarred(conn,pid,username)
     if starred is not None:
@@ -218,6 +232,8 @@ def unstarPost(conn,pid,username):
         conn.commit()
     
 def displayStarredEvents(conn,username):
+    ''' This function returns all the events that are starred by a particular user.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     curs.execute('''select * from starred 
                     inner join posts using (pid) 
@@ -225,22 +241,36 @@ def displayStarredEvents(conn,username):
     return curs.fetchall()
 
 def displayPostsByUser(conn,username):
+    ''' This function returns all the posts where the user is also the author.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     curs.execute('''select * from posts 
                     where author = %s''',[username])
     return curs.fetchall()
     
 def isAuthor(conn,pid,username):
+    ''' This function is used to determine whether the user is the author of a 
+        particular post. 
+    '''
     curs = curs = conn.cursor(MySQLdb.cursors.DictCursor)
     curs.execute('''select * from posts where pid = %s and author = %s''',(pid,username))
     return (curs.fetchone() is not None)
     
 def isFollowed(conn,tid,username):
+    ''' This function is used to determine whether a particular tag is followed.
+        It returns a dictionary with the tag id and the username of the user if
+        the tag is followed, but returns an empty set if the user is not following
+        that tag.
+    '''
     curs = curs = conn.cursor(MySQLdb.cursors.DictCursor)
     curs.execute('''select * from followed where tid = %s and username = %s''',(tid,username))
     return curs.fetchone()
     
 def followTag(conn,tid,username):
+    ''' This function adds an entry to the followed table when a user follows a 
+        particular tag. It also updates the tags table to reflect the number of 
+        users that are following that tag.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     followed = isFollowed(conn,tid,username)
     if followed is None:
@@ -250,6 +280,10 @@ def followTag(conn,tid,username):
         conn.commit()
         
 def unfollowTag(conn,tid,username):
+    ''' This function removes the relationship between a tag and a user when they
+        decide to unfollow a tag. It also updates the tag table and subtracts 1
+        from the number of followers of that particular tag.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     followed = isFollowed(conn,tid,username)
     if followed is not None:
@@ -259,6 +293,9 @@ def unfollowTag(conn,tid,username):
         conn.commit()
 
 def displayFollowedTags(conn,username):
+    ''' This function returns a dictionary of all the tags followed by the user
+        and the info associated with them. 
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     curs.execute('''select * from followed 
                     inner join tags using (tid) 
@@ -266,6 +303,8 @@ def displayFollowedTags(conn,username):
     return curs.fetchall()
 
 def getTags(conn):
+    ''' This function returns a dictionary of all the tags in the tags table.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
     curs.execute('''select * from tags''')
@@ -275,6 +314,8 @@ def getTags(conn):
 
 
 def getNumPostsThatUseTag(conn, tid):
+    ''' This function returns that number of posts that use a particular tag.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
     curs.execute('''select tid,count(*) from tagged where tid = %s group by tid''', (tid,))
@@ -286,6 +327,9 @@ def getNumPostsThatUseTag(conn, tid):
         return 0
     
 def getUserPhone(conn,username):
+    ''' This function returns the phone number of the user from the accounts 
+        table.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
     curs.execute('''select phoneNum from accounts where username = %s''',[username])
@@ -294,12 +338,16 @@ def getUserPhone(conn,username):
     return phoneNum
     
 def updateUserPhone(conn,username,newNum):
+    ''' This function updates the user's phone number in the accounts table.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
     curs.execute('''update accounts set phoneNum = %s where username = %s''',(newNum,username))
     conn.commit()
     
 def getTotalStarsByPost(conn,pid):
+    ''' This function gets the total number of stars that each post has. 
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
     curs.execute('''select count(*) from starred group by pid having pid = %s''',[pid])
@@ -308,6 +356,8 @@ def getTotalStarsByPost(conn,pid):
     return numStars # {'count(*)': 1}
     
 def getTotalStarsByUser(conn,username):
+    ''' This function gets the total number of posts that each user has starred.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
     curs.execute('''select count(*) from starred group by username having username = %s''',[username])
