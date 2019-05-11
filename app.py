@@ -34,7 +34,10 @@ app.config['MAX_UPLOAD'] = 256000
 
 @app.route('/')
 def home():
-    return render_template('home.html', title="Home", logged_in=session.get('logged_in',False))
+    conn = info.getConn('c9')
+    featuredEvents = info.getFeaturedEvents(conn)
+    print (featuredEvents)
+    return render_template('home.html', title="Home", featuredEvents = featuredEvents, logged_in=session.get('logged_in',False))
     
 @app.route('/login/')
 def login():
