@@ -9,6 +9,9 @@
     <button id="edit-post" type="button" >Edit the Post</button>
 </a>
 {% endif %}
+<p>{{ post.imagefile }} with pid {{ post.pid }}</p>
+{# double check if picture exists, if not then display an empty string #}
+<p><img src="{{ url_for('pic',pid=post.pid) }}" alt=""></p>
 <p>Author: {{ post.author }}</p>
 <p>Event name: {{ post.title }}</p>
 <p>Description: {{ post.content }}</p>

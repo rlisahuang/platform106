@@ -5,7 +5,7 @@
  
 <p>Fill out this form to insert an event post:</p>
 
-<form method="POST" action="">
+<form method="POST" action="" enctype="multipart/form-data">
 
     <fieldset>
     <legend>Event Info</legend>
@@ -21,7 +21,7 @@
         <tr><td><label for="post-eventtime" accesskey="t">Time:</label></td>
             <td><input type="time" name="post-eventtime" id="post-eventtime" value="{{ post.event_time if post else '' }}"></td></tr>
         <tr><td><label for="post-picture" accesskey="p">Photo:</label></td>
-            <td><input type="file" name="post-picture" id="post-picture" value="{{ post.picture if post else '' }}"></td></tr>
+            <td><input type="file" name="post-picture" id="post-picture" ></td></tr>
         <tr><td><label for="post-tags" accesskey="t">Tags:</label></td>
             <td><input placeholder="{{ '' if post else 'tag1,tag2' }}"type="text" name="post-tags" id="post-tags" value="{{ post.tags if post else '' }}"></td></tr>
         </table>
