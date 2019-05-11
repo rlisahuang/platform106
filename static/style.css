@@ -7,6 +7,8 @@ h1 {
     font-family: 'Comic Sans MS';
 }
 
+
+
 .subhead{
     font-weight: bolder;
 }
@@ -38,7 +40,44 @@ li a:hover {
 }
 
 table {
-  border-color: seagreen;
+  border-collapse: collapse;
+  width: 100%;
+  color: navy;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even){background-color: #f2f2f2}
+
+th {
+  background-color: navy;
+  color: white;
+}
+
+input {
+  width: 50%;
+  padding: 8px 20px;
+  margin: 8px 0;
+  border: none;
+  background-color: navy;
+  color: white;
+  font-size: 16px;
+}
+
+button {
+  background-color: navy;
+  border: none;
+  color: white;
+  padding: 9px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 8px 0;
+  cursor: pointer;
 }
 
 p {
