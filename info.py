@@ -205,12 +205,16 @@ def starPost(conn,pid,username):
     if starred is None:
         curs.execute('''insert into starred (pid,username) values (%s, %s)''',(pid,username))
         conn.commit()
+        curs.execute('''update posts set num_starred = num_starred + 1 where pid = %s''', (pid,))
+        conn.commit()
     
 def unstarPost(conn,pid,username):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     starred = isStarred(conn,pid,username)
     if starred is not None:
         curs.execute('''delete from starred where pid = %s and username = %s''',(pid,username))
+        conn.commit()
+        curs.execute('''update posts set num_starred = num_starred - 1 where pid = %s''', (pid,))
         conn.commit()
     
 def displayStarredEvents(conn,username):
@@ -310,6 +314,26 @@ def getTotalStarsByUser(conn,username):
     numStars = curs.fetchone()
     
     return numStars # {'count(*)': 1}
+    
+def getFeaturedEvents(conn):
+    ''' This function gets the three posts with the highest number of 'stars' 
+        because we want to feature events that students are most interested in
+        on our home page. The function also uses an inner join to get the tags
+        associated with each of those posts.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select * from posts order by num_starred desc limit 3''')
+    featuredEvents = curs.fetchall()
+    
+    for p in featuredEvents:
+        curs.execute('''select * from tags inner join tagged 
+                        on tags.tid =tagged.tid where tagged.pid=%s''',[p.get('pid')])
+        tags = [tag.get('tag_name') for tag in curs.fetchall()]
+        p['tags'] = tags
+        row2utf8(p)
+        
+    return featuredEvents
     
     
 if __name__ == '__main__':

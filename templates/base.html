@@ -7,14 +7,14 @@
         <link rel="stylesheet" href="{{url_for('static',filename='style.css')}}" type="text/css" />
 
         {% block headstuff %}
-        <ul>
+        <ul class = "banner header">
             <li><a href= "{{ url_for('home') }}">Home</a></li>
             {% if logged_in %}
             <li><a href = "{{ url_for('generalFeed') }}">General Feed</a></li>
             <li><a href = "{{ url_for('tagsList') }}">Tags List</a></li>
             <li><a href = "{{ url_for('createPost') }}">Create Event</a></li>
-            <li><a href = "{{ url_for('userPortal') }}" >User Portal</a></li>
-            <li><a href = "{{ url_for('logout') }}" > Logout </a></li>
+            <li class = "banner-tab-right"><a href = "{{ url_for('logout') }}"> Logout </a></li>
+            <li class = "banner-tab-right"><a href = "{{ url_for('userPortal') }}">User Portal</a></li>
             {% else %}
             <li><a href = "{{ url_for('login') }}" > Login </a></li>
             {% endif %}

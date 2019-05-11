@@ -19,7 +19,11 @@
 <p>Event date: {{ post.event_date }}</p>
 <p>Event time: {{ post.event_time }}</p>
 <p>Time created: {{ post.time_created }}</p>
-<p>Tags: {{ post.tags }}</p>
+<p class = "tags">Tags:
+    {% for tag in post.tags %}
+    <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> 
+    {% endfor %}
+</p>
 
 {% if logged_in %}
 <form method="post" action="{{ url_for('starAjax') }}">
