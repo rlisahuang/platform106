@@ -10,11 +10,39 @@
 <p>Please log in to use the platform.</p>
 {% endif %}
 
-<p>Featured Events:</p>
+<form id="basicSearch" method="POST" action="{{ url_for("basicSearch") }}">
+    <label for="basicSearch"><input id="searchterm" placeholder="Search" name="searchterm"/></label>
+    <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
+</form>
+    
 <br>
-Search:
-    <form id="basicSearch" method="POST" action="{{ url_for("basicSearch") }}">
-        <label for="basicSearch"><input id="searchterm" placeholder="Search" name="searchterm"/></label>
-        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
-    </form>
+
+<p>Featured Events! See what Wellesley students are most interested in!</p>
+<table id="posts-list">
+    <tr>
+        <th>Title</th>
+        <th>Location</th>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Tags</th>
+        <th>Author</th>
+    </tr>
+    {% if featuredEvents %}
+    {% for post in featuredEvents %}
+    <tr data-pid={{ post.pid }}>
+        <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td> 
+        <td class="location">{{ post.location }}</td>
+        <td class="event_date">{{ post.event_date }}</td>
+        <td class="event_time">{{ post.event_time }}</td>
+        <td class="tags">
+            {% for tag in post.tags %}
+            <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> 
+            {% endfor %}
+        </td>
+        <td class="post_author">{{ post.author }}</td>
+    </tr>
+    {% endfor %}
+    {% endif %}
+</table>
+
 {% endblock %}

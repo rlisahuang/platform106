@@ -5,9 +5,9 @@
     
     <form id="advancedSearch" method="POST" action={{ url_for("advancedSearch") }}>
         <label for="advancedSearch">Title: 
-        <input id="searchterm" placeholder="{{ keyword }}" name="searchterm"></label>
+        <input id="searchterm" placeholder="Search by keyword!" name="searchterm"></label>
         <label for="advancedSearch">Tags: 
-        <input id="searchterm" placeholder="{{ tags }}" name="searchtags"/>
+        <input id="searchterm" placeholder="Search by tag!" name="searchtags"/>
         </label>
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>
@@ -61,7 +61,6 @@
     var star_URL = "{{ url_for('starAjax') }}";
     
     $("label.star-event").on("click", function (event) {
-        alert("hello")
         event.preventDefault();
         var starred = $(event.target).closest("form").find("input[name='starred']").val();
         var pid = $(event.target).closest("form").find("input[name='pid']").val();
@@ -70,11 +69,9 @@
     });
     
     function sendStar(pid,starred,button) {
-        alert("starring")
         console.log("Sending "+pid +" and " + starred +" to the back end");
         $.post(star_URL,{'error':false, 'pid': pid, 'starred': starred},
         function(data,status){
-            alert("success")
             updateStar(data,button);
         },'json');
     }

@@ -3,7 +3,6 @@ use c9;
 drop table if exists isReported;
 drop table if exists tagged;
 drop table if exists starred;
-drop table if exists posted;
 drop table if exists followed;
 drop table if exists accounts;
 drop table if exists posts;
@@ -21,7 +20,7 @@ create table posts (
     content varchar(1000),
     time_created datetime,
     location varchar(60),
-    num_starred int unsigned,
+    num_starred int unsigned default 0,
     imagefile varchar(60),
     event_time time NOT NULL,
     event_date date NOT NULL,
@@ -33,7 +32,7 @@ create table posts (
 create table tags (
     tid int auto_increment primary key,
     tag_name varchar(100),
-    num_followers int unsigned
+    num_followers int unsigned default 0
 );
 
 create table tagged (
@@ -51,16 +50,6 @@ create table starred (
     foreign key (pid) references posts(pid) on delete restrict on update cascade,
     foreign key (username) references accounts(username) on delete restrict on update cascade
 );
-
-/*
-create table posted (
-    pid int NOT NULL,
-    username varchar(30) NOT NULL,
-    primary key (pid,username),
-    foreign key (pid) references posts(pid) on delete restrict on update cascade,
-    foreign key (username) references accounts(username) on delete restrict on update cascade
-);
-*/
 
 create table followed (
     tid int NOT NULL,

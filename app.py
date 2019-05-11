@@ -34,7 +34,10 @@ app.config['MAX_UPLOAD'] = 256000
 
 @app.route('/')
 def home():
-    return render_template('home.html', title="Home", logged_in=session.get('logged_in',False))
+    conn = info.getConn('c9')
+    featuredEvents = info.getFeaturedEvents(conn)
+    print (featuredEvents)
+    return render_template('home.html', title="Home", featuredEvents = featuredEvents, logged_in=session.get('logged_in',False))
     
 @app.route('/login/')
 def login():
@@ -490,13 +493,13 @@ def followAjax():
             if followed == "0":
                 print(tid)
                 print(usr)
-                info.followTag(conn,tid,usr)
+                numFollows = info.followTag(conn,tid,usr)['num_followers']
                 print("post {} is followed by user {}".format(tid,usr))
-                return jsonify( {'error':False, 'tid': tid, 'followed': "1"} )
+                return jsonify( {'error':False, 'tid': tid, 'followed': "1", 'numFollows': numFollows} )
             else:
-                info.unfollowTag(conn,tid,usr)
+                numFollows = info.unfollowTag(conn,tid,usr)['num_followers']
                 print("post {} is unfollowed by user {}".format(tid,usr))
-                return jsonify( {'error':False, 'tid': tid, 'followed': "0"} )
+                return jsonify( {'error':False, 'tid': tid, 'followed': "0", 'numFollows': numFollows} )
         else:
             print("Need to login")
             return jsonify( {'error': True, 'err': "need to login"} )

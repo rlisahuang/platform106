@@ -7,7 +7,7 @@
     
     <form id="advancedSearch" method="POST" action={{ url_for("advancedSearch") }}>
         <label class="advancedSearch">Search Tags: 
-        <input id="searchterm" placeholder="Enter a tag" name="searchtags"/>
+        <input id="searchterm" placeholder="Enter a tag!" name="searchtags"/>
         </label>
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>
@@ -78,6 +78,7 @@
                 button.val('Follow the Tag');
             }
             button.closest("form").find("input[name=followed]").val(obj.followed);
+            button.closest("[data-tid]").find(".num_followers").text(obj.numFollows);
         }
     }
 </script>
