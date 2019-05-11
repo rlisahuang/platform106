@@ -31,6 +31,7 @@ app.config['TRAP_BAD_REQUEST_ERRORS'] = True
 
 app.config['UPLOADS'] = 'uploads'
 app.config['MAX_UPLOAD'] = 256000
+#app.config['MAX_UPLOAD'] = 2097152 -- 2.0 MB
 
 @app.route('/')
 def home():
@@ -51,7 +52,8 @@ def tagsList():
         return redirect(url_for("login"))
     
     conn = info.getConn('c9')
-    tags = info.getTags(conn)
+    tag = session.pop('tags','')
+    tags = info.getTags(conn, tag)
 
     # update each tag dictionary with info indicating 1) whether it is followed by
     # this user, 2) how many posts that use this tag and 3) how many followers
@@ -66,6 +68,17 @@ def tagsList():
         tag['num_posts'] = info.getNumPostsThatUseTag(conn, tag['tid'])
     
     return render_template('tagsList.html', title = "Tags List", tags=tags, logged_in=logged_in)
+ 
+# url for tags search FORM (in tagsList page)        
+@app.route('/tagsSearch',methods=['POST'])
+def tagsSearch():
+    if request.method == 'POST':
+        tag = request.form.get('searchtags','')
+        # save the tags in session to be displayed in generalFeed
+        session['tags'] = tag
+        
+        return redirect(url_for("tagsList"))
+    return redirect(request.referrer)
     
 @app.route('/userPortal/')
 def userPortal():

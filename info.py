@@ -307,13 +307,17 @@ def displayFollowedTags(conn,username):
                     where followed.username = %s''',[username])
     return curs.fetchall()
 
-def getTags(conn):
+def getTags(conn, tag_name=''):
     ''' This function returns a dictionary of all the tags in the tags table.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
-    curs.execute('''select * from tags''')
-    allTags = curs.fetchall()
+    if tag_name != '':
+        curs.execute('''select * from tags where tags.tag_name like %s''', ["%"+tag_name+"%"])
+        allTags = curs.fetchall()
+    else:
+        curs.execute('''select * from tags''')
+        allTags = curs.fetchall()
     
     return allTags
 

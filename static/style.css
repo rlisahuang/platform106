@@ -7,8 +7,6 @@ h1 {
     font-family: 'Comic Sans MS';
 }
 
-
-
 .subhead{
     font-weight: bolder;
 }
@@ -65,9 +63,9 @@ input {
   width: 50;
   padding: 8px 20px;
   margin: 0px 0;
-  border: none;
-  background-color: navy;
-  color: white;
+  border: 1px solid navy;
+  background-color: white;
+  color: navy;
   font-size: 16px;
 }
 

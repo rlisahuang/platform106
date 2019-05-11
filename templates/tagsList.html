@@ -5,9 +5,9 @@
  
     <p>This is the Tags List page</p>
     
-    <form id="advancedSearch" method="POST" action={{ url_for("advancedSearch") }}>
-        <label class="advancedSearch">Search Tags: 
-        <input id="searchterm" placeholder="Enter a tag!" name="searchtags"/>
+    <form id="tagsSearch" method="POST" action={{ url_for("tagsSearch") }}>
+        <label class="tagsSearch">Search Tags: 
+        <input id="searchtags" placeholder="Enter a tag!" name="searchtags"/>
         </label>
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>
