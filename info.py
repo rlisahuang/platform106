@@ -239,7 +239,6 @@ def followTag(conn,tid,username):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     followed = isFollowed(conn,tid,username)
     if followed is None:
-        curs.execute()
         curs.execute('''insert into followed (tid,username) values (%s, %s)''',(tid,username))
         conn.commit()
         curs.execute('''update tags set num_followers = num_followers + 1 where tid = %s''', (tid,))
