@@ -4,12 +4,13 @@
 {% block content %}
 <h3 style="color:blue;">Hello, {{ username }}!</h3> 
 
+<h4> <a href=" {{url_for('updateProfile')}} ">Profile and Preferences</a> </h4>
+
 <h4> Manage my Starred Posts </h4>
 {% for star in stars %}
 <p>---<br>
 Title: <a href="{{ url_for('displayPost',pid=star['pid']) }}">{{ star['title'] }}</a><br>
 Content: {{ star['content'] }}<br>
----<br>
 <form method="post" action="{{ url_for('starAjax') }}">
     <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ star.pid }}"></label>
     <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ star.starred }}"></label>
@@ -18,12 +19,12 @@ Content: {{ star['content'] }}<br>
     </label>
 </form>
 </p>
+---<br>
 {% endfor %}
 
 <h4> Manage my Followed Tags </h4>
 {% for follow in follows %}
 <p>---
-<br>
 Tag: <a href="{{ url_for('searchTag',tag=follow['tag_name']) }}">{{ follow['tag_name'] }}</a>
 <form method="post" action="{{ url_for('followAjax') }}">
     <input type="hidden" name="tid" class="tid" value="{{ follow.tid }}">
@@ -35,8 +36,6 @@ Tag: <a href="{{ url_for('searchTag',tag=follow['tag_name']) }}">{{ follow['tag_
 ---<br>
 </p>
 {% endfor %}
-
-<h4> <a href=" {{url_for('updateProfile')}} ">Profile and Preferences</a> </h4>
 
 <h4> Manage my Created Posts </h4>
 {% for post in posts %}
