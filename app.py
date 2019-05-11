@@ -12,6 +12,7 @@ from flask import (Flask, render_template, make_response, url_for, request,
                    redirect, flash, session, send_from_directory,jsonify)
 from werkzeug.utils import secure_filename
 
+
 app = Flask(__name__)
 
 import datetime
@@ -48,9 +49,7 @@ def tagsList():
     
     conn = info.getConn('c9')
     tags = info.getTags(conn)
-    print(tags)
-    # nums = info.getNumPostsThatUseTag(conn)
-    # print(nums)
+
     #need to add nums info to tags dictionary
     for tag in tags:
         followed = info.isFollowed(conn, tag['tid'], session.get('username'))
@@ -59,6 +58,9 @@ def tagsList():
         else:
             followed = "1"
         tag['followed'] = followed
+
+        tag['num_posts'] = info.getNumPostsThatUseTag(conn, tag['tid'])
+
         
     
     return render_template('tagsList.html', title = "Tags List", tags=tags, logged_in=logged_in)

@@ -10,7 +10,6 @@
 Title: <a href="{{ url_for('displayPost',pid=star['pid']) }}">{{ star['title'] }}</a><br>
 Content: {{ star['content'] }}<br>
 ---<br>
-</p>
 <form method="post" action="{{ url_for('starAjax') }}">
     <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ star.pid }}"></label>
     <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ star.starred }}"></label>
@@ -18,6 +17,7 @@ Content: {{ star['content'] }}<br>
         <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if star.starred == '1' else 'Star the Event'}}">
     </label>
 </form>
+</p>
 {% endfor %}
 
 <h4> Manage my Followed Tags </h4>
