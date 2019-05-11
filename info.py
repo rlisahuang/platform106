@@ -242,12 +242,16 @@ def followTag(conn,tid,username):
         curs.execute()
         curs.execute('''insert into followed (tid,username) values (%s, %s)''',(tid,username))
         conn.commit()
+        curs.execute('''update tags set num_followers = num_followers + 1 where tid = %s''', (tid,))
+        conn.commit()
         
 def unfollowTag(conn,tid,username):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     followed = isFollowed(conn,tid,username)
     if followed is not None:
         curs.execute('''delete from followed where tid = %s and username = %s''',(tid,username))
+        conn.commit()
+        curs.execute('''update tags set num_followers = num_followers - 1 where tid = %s''', (tid,))
         conn.commit()
 
 def displayFollowedTags(conn,username):
