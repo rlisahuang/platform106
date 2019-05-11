@@ -239,6 +239,7 @@ def followTag(conn,tid,username):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     followed = isFollowed(conn,tid,username)
     if followed is None:
+        curs.execute()
         curs.execute('''insert into followed (tid,username) values (%s, %s)''',(tid,username))
         conn.commit()
         
@@ -264,13 +265,17 @@ def getTags(conn):
     
     return allTags
 
-def getNumPostsThatUseTag(conn):
+def getNumPostsThatUseTag(conn, tid):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
-    curs.execute('''select tid, count(*) from tagged group by tid''')
-    nums = curs.fetchall()
+    curs.execute('''select tid,count(*) from tagged where tid = %s group by tid''', (tid,))
+    num = curs.fetchone()
     
-    return nums
+    if num != None:
+        return num['count(*)']
+    else:
+        return 0
+    
     
 def getUserPhone(conn,username):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
