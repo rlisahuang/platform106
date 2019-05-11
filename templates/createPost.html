@@ -20,6 +20,8 @@
             <td><input type="date" name="post-eventdate" id="post-eventdate" value="{{ post.event_date if post else '' }}"></td></tr>
         <tr><td><label for="post-eventtime" accesskey="t">Time:</label></td>
             <td><input type="time" name="post-eventtime" id="post-eventtime" value="{{ post.event_time if post else '' }}"></td></tr>
+        <tr><td><label for="post-picture" accesskey="p">Photo:</label></td>
+            <td><input type="file" name="post-picture" id="post-picture" value="{{ post.picture if post else '' }}"></td></tr>
         </table>
     </fieldset>
 

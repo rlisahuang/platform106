@@ -7,9 +7,16 @@ import info
 import sys,os
 import bcrypt
 import MySQLdb
+import imghdr
 
 app = Flask(__name__)
 app.secret_key = 'draft'
+
+# This gets us better error messages for certain common request errors
+app.config['TRAP_BAD_REQUEST_ERRORS'] = True
+
+app.config['UPLOADS'] = 'uploads'
+app.config['MAX_UPLOAD'] = 256000
 
 @app.route('/')
 def home():
@@ -49,8 +56,10 @@ def createPost():
         location = request.form.get('post-location','')
         event_time = request.form.get('post-eventtime','') #check if this works!:)
         event_date = request.form.get('post-eventdate','')
+        picture = request.form.get('picture','')
         
-        newpost = {"title":title,"content":content,"location":location,"event_time":event_time,"event_date":event_date}
+        newpost = {"title":title,"content":content,"location":location,"event_time":event_time,
+            "event_date":event_date, "picture":picture}
         session['newpost'] = newpost
         
         if title == "":
@@ -65,16 +74,45 @@ def createPost():
         if event_time == "":
             flash('Missing value: Please enter a time for your event!')
             error = True
+        if picture == "":
+            flash('Missing value: Please enter a picture for your event!')
+            error = True
+            
+        try: #Handing the image uploading
+            fsize = os.fstat(picture.stream.fileno()).st_size
+            print 'file size is ',fsize
+            if fsize > app.config['MAX_UPLOAD']:
+                raise Exception('File is too big')
+            mime_type = imghdr.what(picture)
+            if mime_type.lower() not in ['jpeg','gif','png']:
+                raise Exception('Not a JPEG, GIF or PNG: {}'.format(mime_type))
+            # filename = secure_filename('{}.{}'.format(nm,mime_type))
+            # pathname = os.path.join(app.config['UPLOADS'],filename)
+            # f.save(pathname)
+            flash('Upload successful')
+            # conn = getConn('wmdb')
+            # curs = conn.cursor()
+            # curs.execute('''insert into picfile(nm,filename) values (%s,%s)
+            #                 on duplicate key update filename = %s''',
+            #              [nm, filename, filename])
+                        #test if any errors occured then take user back to insert page
+            if error == True:
+                return render_template('createPost.html', title="Create a Post!",post=session.get('newpost'))
+            
+            post = info.insertPost(conn, title, content, location, event_time, event_date, picture)
+            print(post)
+            pid = post["LAST_INSERT_ID()"]
+            session.pop('newpost',None)
+            return redirect(url_for('displayPost', pid=pid))
+
+        except Exception as err:
+            flash('Upload failed {why}'.format(why=err))
+            #blank form rendered when page is first visited
+            return render_template('createPost.html', 
+                              title="Create a Post!",post=session.get('newpost',None))
+                
         
-        #test if any errors occured then take user back to insert page
-        if error == True:
-            return render_template('createPost.html', title="Create a Post!",post=session.get('newpost'))
-        
-        post = info.insertPost(conn, title, content, location, event_time, event_date)
-        print(post)
-        pid = post["LAST_INSERT_ID()"]
-        session.pop('newpost',None)
-        return redirect(url_for('displayPost', pid=pid))
+
 
 # url for post page
 @app.route('/posts/<int:pid>')
@@ -222,4 +260,4 @@ def loginAction():
 
 if __name__ == '__main__':
     app.debug = True
-    app.run('0.0.0.0',8080)
+    app.run('0.0.0.0',8082)

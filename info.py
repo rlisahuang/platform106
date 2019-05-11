@@ -48,7 +48,7 @@ def row2utf8(row):
 #-------------------------------------------------------------------------------
 # Methods for getting information from, and updating the WMDB
 
-def insertPost(conn, title, content, location, event_time, event_date):
+def insertPost(conn, title, content, location, event_time, event_date, picture):
     '''Function to insert a new post into the database
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
@@ -58,7 +58,7 @@ def insertPost(conn, title, content, location, event_time, event_date):
     # sql = """INSERT INTO posts 
     # (title, content, date_created, location, num_starred, imagefile, event_time, event_date) 
     # VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
-    val = (title, content, timestamp, location, 0, None, event_time, event_date)
+    val = (title, content, timestamp, location, 0, picture, event_time, event_date)
     curs.execute("""INSERT INTO posts 
     (title, content, date_created, location, num_starred, imagefile, event_time, event_date) 
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", val)
