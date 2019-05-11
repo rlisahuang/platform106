@@ -177,11 +177,11 @@ def searchPosts(conn,keyword='',tags=''):
     function might occur in the future.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
-    if tags != '': # search without tags
+    if tags != '': # search with tags
         curs.execute('''select * from posts inner join tagged using (pid) 
                     inner join tags using (tid) 
-                    where posts.title like %s and tags.tag_name in (%s)''', ["%"+keyword+"%",tags])
-    else: # search with tags
+                    where posts.title like %s and tags.tag_name like (%s)''', ["%"+keyword+"%","%"+tags+"%"])
+    else: # search without tags
         curs.execute('''select * from posts where posts.title like %s''', ["%"+keyword+"%"])
                     
     posts = curs.fetchall()
@@ -265,6 +265,7 @@ def getTags(conn):
     
     return allTags
 
+
 def getNumPostsThatUseTag(conn, tid):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
@@ -275,7 +276,6 @@ def getNumPostsThatUseTag(conn, tid):
         return num['count(*)']
     else:
         return 0
-    
     
 def getUserPhone(conn,username):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
@@ -306,6 +306,7 @@ def getTotalStarsByUser(conn,username):
     numStars = curs.fetchone()
     
     return numStars # {'count(*)': 1}
+    
     
 if __name__ == '__main__':
     conn = getConn('c9')

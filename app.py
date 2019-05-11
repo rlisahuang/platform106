@@ -43,7 +43,7 @@ def tagsList():
     
     conn = info.getConn('c9')
     tags = info.getTags(conn)
-    
+
     #need to add nums info to tags dictionary
     for tag in tags:
         followed = info.isFollowed(conn, tag['tid'], session.get('username'))
@@ -400,4 +400,4 @@ def followAjax():
 
 if __name__ == '__main__':
     app.debug = True
-    app.run('0.0.0.0',8082)
+    app.run('0.0.0.0',8081)
