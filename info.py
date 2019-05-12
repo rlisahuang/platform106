@@ -55,7 +55,7 @@ def row2utf8(row):
         raise TypeError('row is of unhandled type')
 
 #-------------------------------------------------------------------------------
-# Methods for getting information from, and updating the WMDB
+# Methods for getting information from, and updating the C9
 
 def insertPost(conn, title, content, location, event_time, event_date, tags, username):
     '''
