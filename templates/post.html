@@ -2,39 +2,45 @@
  
 {# replaces default content block #}
 {% block content %}
-
 {% if post %} 
-{% if isAuthor %}
-<a href="{{ url_for('updatePost',pid=post.pid) }}">
-    <button id="edit-post" type="button" >Edit the Post</button>
-</a>
-{% endif %}
+<h3>{{ post.title }}</h3>
+<p>Created at {{ post.time_created }} by {{ post.author }}
+    <ul class="post-buttons">
+    <li>{% if isAuthor %}
+    <a style="padding:0px; padding-right:10px;" href="{{ url_for('updatePost',pid=post.pid) }}">
+        <button class="edit-post" type="button" >Edit the Post</button>
+    </a>
+    {% endif %}</li>
+    
+    <li>{% if logged_in %}
+    <form method="post" action="{{ url_for('starAjax') }}">
+        <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ post.pid }}"></label>
+        <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ post.starred }}"></label>
+        <label class ="star-event">
+            <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred == '1' else 'Star the Event'}}">
+        </label>
+    </form>
+    {% endif %}</li>
+    </ul>
+    
+    
+</p>
+
 {# double check if picture exists, if not then display an empty string #}
 <p><img src="{{ url_for('pic',pid=post.pid) }}" alt=""></p>
-<p>Author: {{ post.author }}</p>
-<p>Event name: {{ post.title }}</p>
+
 <p>Description: {{ post.content }}</p>
 <p>Location: {{ post.location }}</p>
 <p>Event date: {{ post.event_date }}</p>
 <p>Event time: {{ post.event_time }}</p>
-<p>Time created: {{ post.time_created }}</p>
 <p class = "tags">Tags:
     {% for tag in post.tags %}
     <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> 
     {% endfor %}
 </p>
 
-{% if logged_in %}
-<form method="post" action="{{ url_for('starAjax') }}">
-    <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ post.pid }}"></label>
-    <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ post.starred }}"></label>
-    <label class ="star-event">
-        <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred == '1' else 'Star the Event'}}">
-    </label>
-</form>
 {% endif %}
 
-{% endif %}
 
 {% endblock %}
 
