@@ -6,7 +6,7 @@
 
 <h4> <a href=" {{url_for('updateProfile')}} ">Profile and Preferences</a> </h4>
 
-<h4> Manage my Starred Posts </h4>
+<h4> Manage Starred Posts </h4>
 {% for star in stars %}
 <p>---<br>
 Title: <a href="{{ url_for('displayPost',pid=star['pid']) }}">{{ star['title'] }}</a><br>
@@ -22,7 +22,7 @@ Content: {{ star['content'] }}<br>
 ---<br>
 {% endfor %}
 
-<h4> Manage my Followed Tags </h4>
+<h4> Manage Followed Tags </h4>
 {% for follow in follows %}
 <p>---
 Tag: <a href="{{ url_for('searchTag',tag=follow['tag_name']) }}">{{ follow['tag_name'] }}</a>
