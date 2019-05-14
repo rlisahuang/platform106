@@ -30,8 +30,8 @@ app.secret_key = 'draft'
 app.config['TRAP_BAD_REQUEST_ERRORS'] = True
 
 app.config['UPLOADS'] = 'uploads'
-app.config['MAX_UPLOAD'] = 256000
-#app.config['MAX_UPLOAD'] = 2097152 -- 2.0 MB
+#app.config['MAX_UPLOAD'] = 256000
+app.config['MAX_UPLOAD'] = 2097152 #-- 2.0 MB
 
 @app.route('/')
 def home():
@@ -92,6 +92,8 @@ def userPortal():
     stars = info.displayStarredEvents(conn,usr)
     posts = info.displayPostsByUser(conn,usr)
     follows = info.displayFollowedTags(conn,usr)
+    for follow in follows:
+        follow['num_posts'] = info.getNumPostsThatUseTag(conn, follow['tid'])
     
     # update each star with explicit string indicating whether the post is starred by the user
     for star in stars:
@@ -255,7 +257,7 @@ def pic(pid):
     curs.execute('''select pid,imagefile from posts where pid = %s''', [pid])
     pic = curs.fetchone()['imagefile']
     if pic is None:
-        flash('No picture for {}'.format(pid))
+        # flash('No picture for {}'.format(pid))
         val = ""
     else:
         val = send_from_directory(app.config['UPLOADS'],pic)
@@ -287,8 +289,9 @@ def updatePost(pid):
         # the delete function, flash message and redirect to home page
         if request.form.get('submit') == 'delete':
             filename = post['imagefile']
+            if filename is not None:
+                os.remove(os.path.join(app.config['UPLOADS'], filename))
             info.deletePost(conn,pid)
-            os.remove(os.path.join(app.config['UPLOADS'], filename))
             flash("Post ({}) was deleted successfully.".format(pid))
             print("Post ({}) was deleted successfully.".format(pid))
             return redirect(url_for('userPortal'))
@@ -330,6 +333,11 @@ def updatePost(pid):
                 
                 except Exception as err:
                     flash('Upload failed {why}'.format(why=err))
+                    # should make the code cleaner later
+                    if len(oldtags) == 0:
+                        post['tags'] = ''
+                    else:
+                        post['tags'] = ",".join(oldtags)
                     return render_template('updatePost.html', 
                                       title="Update a Post!",post=post, logged_in=logged_in)
 
@@ -520,5 +528,5 @@ def followAjax():
 
 if __name__ == '__main__':
     app.debug = True
-    app.run('0.0.0.0',8081)
+    app.run('0.0.0.0',8082)
 

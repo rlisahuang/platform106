@@ -27,7 +27,7 @@
 </p>
 
 {# double check if picture exists, if not then display an empty string #}
-<p><img src="{{ url_for('pic',pid=post.pid) }}" alt=""></p>
+<p><img src="{{ url_for('pic',pid=post.pid) }}" alt="" width="50%" ></p>
 
 <p>Description: {{ post.content }}</p>
 <p>Location: {{ post.location }}</p>

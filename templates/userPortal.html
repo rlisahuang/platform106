@@ -173,6 +173,7 @@
                 button.val('Follow the Tag');
             }
             button.closest("form").find("input[name=followed]").val(obj.followed);
+            button.closest("[data-tid]").find(".num_followers").text(obj.numFollows);
         }
     }
 </script>

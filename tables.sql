@@ -4,14 +4,15 @@ drop table if exists isReported;
 drop table if exists tagged;
 drop table if exists starred;
 drop table if exists followed;
-drop table if exists accounts;
-drop table if exists posts;
 drop table if exists tags;
+drop table if exists posts;
+drop table if exists accounts;
 
 create table accounts (
     username varchar(30) primary key,
     hashed varchar(60),
-    isAdmin boolean
+    isAdmin boolean,
+    phoneNum varchar(3)
 );
 
 create table posts (

@@ -1,8 +1,8 @@
 #!/usr/bin/python2.7
 '''
-Platform 106 -- Draft Version
+Platform 106 -- Alpha Version
 Authors: Lisa Huang, Shrunothra Ambati, Jocelyn Shiue
-Date: 04/19/2019
+Date: 05/13/2019
 
 app.py
 The main file of the app.
@@ -10,20 +10,35 @@ The main file of the app.
 
 from flask import (Flask, render_template, make_response, url_for, request,
                    redirect, flash, session, send_from_directory,jsonify)
-from werkzeug import secure_filename
+from werkzeug.utils import secure_filename
+
+
 app = Flask(__name__)
+
+import datetime
 
 import info
 import sys,os
 import bcrypt
 import MySQLdb
+import imghdr
 
 app = Flask(__name__)
 app.secret_key = 'draft'
 
+# This gets us better error messages for certain common request errors
+app.config['TRAP_BAD_REQUEST_ERRORS'] = True
+
+app.config['UPLOADS'] = 'uploads'
+#app.config['MAX_UPLOAD'] = 256000
+app.config['MAX_UPLOAD'] = 2097152 #-- 2.0 MB
+
 @app.route('/')
 def home():
-    return render_template('home.html', title="Home", logged_in=session.get('logged_in',False))
+    conn = info.getConn('c9')
+    featuredEvents = info.getFeaturedEvents(conn)
+    print (featuredEvents)
+    return render_template('home.html', title="Home", featuredEvents = featuredEvents, logged_in=session.get('logged_in',False))
     
 @app.route('/login/')
 def login():
@@ -35,7 +50,35 @@ def tagsList():
     if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
-    return render_template('tagsList.html', title = "Tags List", logged_in=logged_in)
+    
+    conn = info.getConn('c9')
+    tag = session.pop('tags','')
+    tags = info.getTags(conn, tag)
+
+    # update each tag dictionary with info indicating 1) whether it is followed by
+    # this user, 2) how many posts that use this tag and 3) how many followers
+    # in total
+    for tag in tags:
+        followed = info.isFollowed(conn, tag['tid'], session.get('username'))
+        if followed == None:
+            followed = "0"
+        else:
+            followed = "1"
+        tag['followed'] = followed
+        tag['num_posts'] = info.getNumPostsThatUseTag(conn, tag['tid'])
+    
+    return render_template('tagsList.html', title = "Tags List", tags=tags, logged_in=logged_in)
+ 
+# url for tags search FORM (in tagsList page)        
+@app.route('/tagsSearch',methods=['POST'])
+def tagsSearch():
+    if request.method == 'POST':
+        tag = request.form.get('searchtags','')
+        # save the tags in session to be displayed in generalFeed
+        session['tags'] = tag
+        
+        return redirect(url_for("tagsList"))
+    return redirect(request.referrer)
     
 @app.route('/userPortal/')
 def userPortal():
@@ -43,16 +86,57 @@ def userPortal():
     if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
-    return render_template('userPortal.html', title = "User Portal", username=session.get('username'),logged_in=logged_in)
     
-#Builds the create post page
-'''
-Potential Issue:
-So far, we have not specified who creates the post in the backend. Despite that
-any user could create posts after logging in, in the database we don't know the 
-authors of the posts. This is a feature to be implemented in the next stage to
-help us display posts that are created by a certain user in their userPortal.
-'''
+    conn = info.getConn('c9')
+    usr=session.get('username')
+    stars = info.displayStarredEvents(conn,usr)
+    posts = info.displayPostsByUser(conn,usr)
+    follows = info.displayFollowedTags(conn,usr)
+    for follow in follows:
+        follow['num_posts'] = info.getNumPostsThatUseTag(conn, follow['tid'])
+    
+    # update each star with explicit string indicating whether the post is starred by the user
+    for star in stars:
+        isStarred = info.isStarred(conn,star['pid'],usr)
+        starred = "0" if isStarred is None else "1"
+        star['starred'] = starred
+    
+    # update each tag with explicit string indicating whether the tag is followed by the user        
+    for follow in follows:
+        isFollowed = info.isFollowed(conn, follow['tid'], usr)
+        followed = "0" if isFollowed is None else "1"
+        follow['followed'] = followed
+
+    return render_template('userPortal.html', title = "User Portal", stars=stars,
+                        posts=posts, follows=follows, username=usr,logged_in=logged_in)
+
+@app.route('/userPortal/updateProfile/', methods=['GET','POST'])
+def updateProfile():
+    ''' Collects contact information from users '''
+    logged_in = session.get('logged_in', False)
+    if not logged_in: # the link is only available after the user is logged in
+        flash("Please log in!")
+        return redirect(url_for("login"))
+    
+    # information from database
+    conn = info.getConn('c9')
+    usr=session.get('username')
+    oldNum = info.getUserPhone(conn,usr)
+    
+    if request.method == "GET":
+        # set up the page and pre-fill the form using info from database
+        oldNum = oldNum['phoneNum']
+        num = "" if oldNum is None else oldNum
+        return render_template('updateProfile.html', num=num,logged_in=session.get('logged_in',False))
+        
+    else:
+        # the update function, grab info filled in by the user
+        newNum = request.form.get("phoneNum")
+        info.updateUserPhone(conn, usr, newNum)
+        print("Phone number of ({}) was updated successfully.".format(usr))
+        return redirect(url_for('updateProfile'))
+
+
 @app.route('/createPost', methods=['GET','POST'])
 def createPost():
     logged_in = session.get('logged_in', False)
@@ -63,54 +147,206 @@ def createPost():
     if request.method == 'GET':
         #blank form rendered when page is first visited
         return render_template('createPost.html', 
-                          title="Create a Post!",post=session.get('newpost',None), logged_in=logged_in)
+                          title="Create a Post!",post=None, logged_in=logged_in)
                           
     else:
         #flash warning messages if form is filled out incorrectly
-        
-        error = False
+
         title = request.form.get('post-title','')
         content = request.form.get('post-content','')
         location = request.form.get('post-location','')
         event_time = request.form.get('post-eventtime','')
         event_date = request.form.get('post-eventdate','')
-        tags = request.form.get('post-tags','').split(',')
-        
-        newpost = {"title":title,"content":content,"location":location,
-                "event_time":event_time,"event_date":event_date, "tags":tags}
+        tags = request.form.get('post-tags','')
+        picture = request.files.get('post-picture',None)
 
-        if title == "":
-            flash('Missing value: Please enter a title for your event!')
-            error = True
-        if location == "":
-            flash('Missing value: Please enter a location for your event!')
-            error = True
-        if event_date == "":
-            flash('Missing value: Please enter a date for your event!')
-            error = True
-        if event_time == "":
-            flash('Missing value: Please enter a time for your event!')
-            error = True
-        
+        newpost = {"title":title,"content":content,"location":location,
+                "event_time":event_time,"event_date":event_date, "tags":tags,'picture':picture}
+    
+        error = checkRequiredInfo(title,location,event_date,event_time)
+
         # test if any errors occured then take user back to insert page, with 
         # the info that they already provided prefilled
         if error:
             return render_template('createPost.html', title="Create a Post!",post=newpost, logged_in=logged_in)
+        
         else: 
-            pid = info.insertPost(conn, title, content, location, event_time, event_date, tags)
-            return redirect(url_for('displayPost', pid=pid))
+            # first insert the post without picture, because we need the pid
+            pid = info.insertPost(conn, title, content, location, event_time, event_date, tags.split(','), session.get('username'))
+            
+            # picture is optional
+            if picture is None:
+                return redirect(url_for('displayPost', pid=pid))
+            else:
+                # if picture is provided, try uploading
+                
+                try: #Handing the image uploading
+                    fsize = os.fstat(picture.stream.fileno()).st_size
+                    if fsize > app.config['MAX_UPLOAD']:
+                        raise Exception('File is too big')
+                    mime_type = imghdr.what(picture)
+                    if mime_type.lower() not in ['jpeg','gif','png']:
+                        raise Exception('Not a JPEG, GIF or PNG: {}'.format(mime_type))
+                    filename = secure_filename("{}.{}".format(pid,mime_type))
+                    pathname = os.path.join(app.config['UPLOADS'],filename)
+                    picture.save(pathname)
+                    
+                    conn = info.getConn('c9')
+                    curs = conn.cursor()
+                    # upload existing record with the provided picture
+                    curs.execute('''UPDATE posts 
+                                    SET imagefile = %s
+                                    WHERE pid = %s''',
+                                 [filename, pid])
+                                #test if any errors occured then take user back to insert page
+                    conn.commit()
+                
+                
+                    return redirect(url_for('displayPost', pid=pid))
+            
+                except Exception as err:
+                    flash('Redirecting to update page: Picture upload failed {why}'.format(why=err))
+                    # redirect to the update page to re-upload the picture 
+                    return redirect(url_for('updatePost',pid=pid))
+
+                
+# helper function that checks if all required information is provided
+def checkRequiredInfo(title, location, event_date, event_time):
+    error = False
+    
+    if title == "":
+        flash('Missing value: Please enter a title for your event!')
+        error = True
+    if location == "":
+        flash('Missing value: Please enter a location for your event!')
+        error = True
+    if event_date == "":
+        flash('Missing value: Please enter a date for your event!')
+        error = True
+    if event_time == "":
+        flash('Missing value: Please enter a time for your event!')
+        error = True
+        
+    return error
 
 # url for post page
 @app.route('/posts/<int:pid>')
 def displayPost(pid):
+    ''' Allow users who are not logged_in to see the posts, with the star function disabled '''
+    logged_in = session.get('logged_in', False)
+
+    conn = info.getConn('c9')
+    postInfo = info.readOnePost(conn,pid)
+    
+    if logged_in:
+        username = session.get('username')
+        starred = info.isStarred(conn,pid,username)
+        isAuthor = info.isAuthor(conn,pid,username)
+        postInfo["starred"] = "0" if starred is None else "1"
+    
+        return render_template('post.html',isAuthor=isAuthor,post=postInfo,logged_in=logged_in)
+    
+    else:
+        return render_template('post.html',post=postInfo,logged_in=logged_in)
+   
+@app.route('/pic/<pid>')
+def pic(pid):
+    ''' url for looking for picture in the file system with given pid '''
+    conn = info.getConn('c9')
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select pid,imagefile from posts where pid = %s''', [pid])
+    pic = curs.fetchone()['imagefile']
+    if pic is None:
+        # flash('No picture for {}'.format(pid))
+        val = ""
+    else:
+        val = send_from_directory(app.config['UPLOADS'],pic)
+    return val
+
+ 
+@app.route('/updatePost/<int:pid>',methods=['GET','POST'])
+def updatePost(pid):
     logged_in = session.get('logged_in', False)
     if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
     conn = info.getConn('c9')
-    postInfo = info.readOnePost(conn,pid)
-    return render_template('post.html',post=postInfo,logged_in=session.get('logged_in',False))
+    # information from database
+    post = info.readOnePost(conn,pid)
+    time_obj = datetime.datetime.strptime(str(post['event_time']),'%H:%M:%S').time()
+    post['event_time'] = str(time_obj)[:5] # hh:mm in 12-hour format
+    oldtags = post.get('tags')
+    
+    if request.method == "GET":
+        # set up the page and pre-fill the form using info from database
+        if len(oldtags) == 0:
+            post['tags'] = ''
+        else:
+            post['tags'] = ",".join(oldtags)
+        return render_template('updatePost.html', post=post,logged_in=session.get('logged_in',False))
+    
+    else:
+        # the delete function, flash message and redirect to home page
+        if request.form.get('submit') == 'delete':
+            filename = post['imagefile']
+            if filename is not None:
+                os.remove(os.path.join(app.config['UPLOADS'], filename))
+            info.deletePost(conn,pid)
+            flash("Post ({}) was deleted successfully.".format(pid))
+            print("Post ({}) was deleted successfully.".format(pid))
+            return redirect(url_for('userPortal'))
+       
+        # the update function, grab info filled in by the user
+        else:
+            title = request.form.get('post-title')
+            content = request.form.get('post-content')
+            location = request.form.get('post-location')
+            date = request.form.get('post-eventdate')
+            time = request.form.get('post-eventtime')
+            newtags = request.form.get('post-tags','').split(',')
+            picture = request.files.get('post-picture',None)
+            
+            error = checkRequiredInfo(title,location,date,time)
+            
+            if error:
+                return render_template('updatePost.html', title="Update a Post!",post=post, logged_in=logged_in)
 
+            if picture is None: # no new pic uploaded by user, use the existing pic (if any) by default
+                conn = info.getConn('c9')
+                curs = conn.cursor(MySQLdb.cursors.DictCursor)
+                curs.execute('''select pid,imagefile from posts where pid = %s''', [pid])
+                filename = curs.fetchone()['imagefile']
+
+            else: # user uploaded a new pic
+                try: #Handing the image uploading
+                    fsize = os.fstat(picture.stream.fileno()).st_size
+
+                    if fsize > app.config['MAX_UPLOAD']:
+                        raise Exception('File is too big')
+                    mime_type = imghdr.what(picture)
+                    if mime_type.lower() not in ['jpeg','gif','png']:
+                        raise Exception('Not a JPEG, GIF or PNG: {}'.format(mime_type))
+                    filename = secure_filename("{}.{}".format(pid,mime_type))
+                    print(filename)
+                    pathname = os.path.join(app.config['UPLOADS'],filename)
+                    picture.save(pathname)
+                
+                except Exception as err:
+                    flash('Upload failed {why}'.format(why=err))
+                    # should make the code cleaner later
+                    if len(oldtags) == 0:
+                        post['tags'] = ''
+                    else:
+                        post['tags'] = ",".join(oldtags)
+                    return render_template('updatePost.html', 
+                                      title="Update a Post!",post=post, logged_in=logged_in)
+
+            info.updatePost(conn,pid, title, content, location, filename,time,date,session.get('username'),oldtags,newtags)
+        
+            print("Post ({}) was updated successfully.".format(pid))
+            return redirect(url_for('displayPost', pid=pid))
+            
+                                  
 # url for simple search FORM
 @app.route('/basicSearch',methods=['POST'])
 def basicSearch():
@@ -123,10 +359,11 @@ def basicSearch():
         session['tags'] = ''
 
         return redirect(url_for("generalFeed"))
+        
     return redirect(request.referrer)
 
 # url for advanced search FORM (in a search page)        
-@app.route('/advancedSearch',methods=['GET', 'POST'])
+@app.route('/advancedSearch',methods=['POST'])
 def advancedSearch():
     if request.method == 'POST':
         title = request.form.get('searchterm','')
@@ -142,18 +379,30 @@ def advancedSearch():
 # url that hosts the advanced search form as well as search results    
 @app.route('/generalFeed/')
 def generalFeed():
+    ''' Allows users who are not logged_in to see the general feed, with star function disabled '''
     logged_in = session.get('logged_in', False)
-    if not logged_in: # the link is only available after the user is logged in
-        flash("Please log in!")
-        return redirect(url_for("login"))
-    keyword = session.get('keyword','')
-    tags = session.get('tags','')
+    keyword = session.pop('keyword','')
+    tags = session.pop('tags','')
     conn = info.getConn('c9')
     posts = info.searchPosts(conn,keyword,tags)
     tagHolder = "enter tags separated by comma: e.g. cs, club" if (tags != '') else tags
-
-    return render_template('generalFeed.html',title = "General Feed", keyword=keyword,tags=tagHolder,posts=posts,logged_in=session.get('logged_in',False))
     
+    if logged_in:
+        for post in posts:
+            isStarred = info.isStarred(conn,post['pid'],session.get('username'))
+            print(isStarred)
+            post['starred'] = "0" if isStarred is None else "1"
+            print(post)
+    
+    return render_template('generalFeed.html',title = "General Feed", keyword=keyword,tags=tagHolder,posts=posts,logged_in=session.get('logged_in',False))    
+
+    
+# url that hosts the advanced search form as well as search results    
+@app.route('/searchTag/<tag>')
+def searchTag(tag):
+    session['tags'] = tag
+    return redirect(url_for("generalFeed"))
+
 @app.route('/join/', methods=["POST"])
 def join():
     try:
@@ -166,17 +415,19 @@ def join():
         hashed = bcrypt.hashpw(passwd1.encode('utf-8'), bcrypt.gensalt())
         conn = info.getConn('c9')
         curs = conn.cursor(MySQLdb.cursors.DictCursor)
-        curs.execute('SELECT username FROM accounts WHERE username = %s',
-                     [username])
-        row = curs.fetchone()
-        if row is not None:
-            flash('That username is taken')
-            return redirect( url_for('login') )
-        curs.execute('INSERT into accounts(username,hashed) VALUES(%s,%s)',
+        # deal with threading races
+        try:
+            curs.execute('INSERT into accounts(username,hashed) VALUES(%s,%s)',
                      [username, hashed])
+            conn.commit()
+        except MySQLdb.IntegrityError as err:
+            flash('That username is taken')
+            return redirect(url_for('login'))
+            
         session['username'] = username
         session['logged_in'] = True
         return redirect( url_for('userPortal') )
+        
     except Exception as err:
         flash('form submission error '+str(err))
         return redirect( url_for('login') )
@@ -223,14 +474,67 @@ def logout():
     except Exception as err:
         flash('some kind of error '+str(err))
         return redirect( url_for('login') )
+        
+""" The route for star/unstar post with ajax """     
+@app.route('/starAjax',methods=['POST'])      
+def starAjax():
+    if request.method == 'POST':
+        conn = info.getConn('c9')
+        usr = session.get('username')
+        pid = request.form.get('pid')
+        starred = request.form.get('starred')
+
+        # check if user is logged in
+        if usr is not None:
+            print(starred)
+            print(type(starred))
+            if starred == "0":
+                info.starPost(conn,pid,usr)
+                print("post {} is starred by user {}".format(pid,usr))
+                return jsonify( {'error':False, 'pid': pid, 'starred': "1"} )
+            else:
+                info.unstarPost(conn,pid,usr)
+                print("post {} is unstarred by user {}".format(pid,usr))
+                return jsonify( {'error':False, 'pid': pid, 'starred': "0"} )
+        else:
+            print("Need to login")
+            return jsonify( {'error': True, 'err': "need to login"} )
+
+""" The route for follow/unfollow tag with ajax """     
+@app.route('/followAjax',methods=['POST'])      
+def followAjax():
+    if request.method == 'POST':
+        conn = info.getConn('c9')
+        usr = session.get('username')
+        tid = request.form.get('tid')
+        followed = request.form.get('followed')
+        print(followed)
+
+        # check if user is logged in
+        if usr is not None:
+            if followed == "0":
+                print(tid)
+                print(usr)
+                numFollows = info.followTag(conn,tid,usr)['num_followers']
+                print("post {} is followed by user {}".format(tid,usr))
+                return jsonify( {'error':False, 'tid': tid, 'followed': "1", 'numFollows': numFollows} )
+            else:
+                numFollows = info.unfollowTag(conn,tid,usr)['num_followers']
+                print("post {} is unfollowed by user {}".format(tid,usr))
+                return jsonify( {'error':False, 'tid': tid, 'followed': "0", 'numFollows': numFollows} )
+        else:
+            print("Need to login")
+            return jsonify( {'error': True, 'err': "need to login"} )
 
 if __name__ == '__main__':
     app.debug = True
-    app.run('0.0.0.0',8081)#!/usr/bin/python2.7
+    app.run('0.0.0.0',8082)
+
+#!/usr/bin/python2.7
 '''
-Platform 106 -- Draft Version
+Platform 106 -- Alpha Version
 Authors: Lisa Huang, Shrunothra Ambati, Jocelyn Shiue
-Date: 04/19/2019
+Date: 05/13/2019
 
 info.py
 File that contains functions for the backend.
@@ -243,7 +547,11 @@ import datetime
 import auth
 
 def getConn(db):
-    conn = auth.mysqlConnectCNF(db='c9')
+    # conn = auth.mysqlConnectCNF(db='c9')
+    conn = MySQLdb.connect(host='localhost',
+                           user='ubuntu',
+                           passwd='',
+                           db=db)
     conn.set_character_set('utf8')
     curs = conn.cursor()
     curs.execute('set names utf8;')
@@ -279,9 +587,9 @@ def row2utf8(row):
         raise TypeError('row is of unhandled type')
 
 #-------------------------------------------------------------------------------
-# Methods for getting information from, and updating the WMDB
+# Methods for getting information from, and updating the C9
 
-def insertPost(conn, title, content, location, event_time, event_date, tags):
+def insertPost(conn, title, content, location, event_time, event_date, tags, username):
     '''
     Function that inserts a new post into the database and establish post-tag 
     relationships if given any tags.
@@ -294,14 +602,17 @@ def insertPost(conn, title, content, location, event_time, event_date, tags):
     database. Not harmful, but needs to be fixed.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
-    val = (title, content, location, 0, None, event_time, event_date)
+    val = (title, content, location, 0, None, event_time, event_date,username)
     # time_created based on mysql's now() function, but it is in UTC instead of
     # UTC-4 -- may have to fixed this later
+    
     curs.execute("""INSERT INTO posts 
-    (title, content, time_created, location, num_starred, imagefile, event_time, event_date) 
-    VALUES (%s, %s, now(), %s, %s, %s, %s, %s)""", val)
+    (title, content, time_created, location, num_starred, imagefile, event_time, event_date,author) 
+    VALUES (%s, %s, now(), %s, %s, %s, %s, %s,%s)""", val)
+    conn.commit()
 
     curs.execute("""select LAST_INSERT_ID()""")
+    #alternative version -- curs.execute("""select max(LAST_INSERT_ID()) from posts""")
     previous_pid_dict = curs.fetchone()
     previous_pid = previous_pid_dict["LAST_INSERT_ID()"]
     print(previous_pid)
@@ -312,16 +623,18 @@ def insertPost(conn, title, content, location, event_time, event_date, tags):
         tagExist = curs.fetchone().get("""EXISTS(SELECT 1 from tags where tag_name = '{}')""".format(tag))
         if not tagExist:
             curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
+            conn.commit()
 
     #linking the tag and post in the tagged table
     for tag in tags:
         curs.execute("""select tid from tags where tag_name = %s""", [tag])
         tag_id = curs.fetchone().get('tid')
         curs.execute("""INSERT INTO tagged (tid, pid) VALUES (%s, %s)""", (tag_id, previous_pid))
+        conn.commit()
     
     return previous_pid
     
-def updatePost(conn, pid, title, content, location, num_starred, imagefile, event_time, event_date):
+def updatePost(conn, pid, title, content, location, imagefile, event_time, event_date,author,oldtags,newtags):
     '''
     <IN PROGRESS>
     Function that updates an existing post given information read from the front
@@ -332,11 +645,41 @@ def updatePost(conn, pid, title, content, location, num_starred, imagefile, even
     implementation has not been tested yet. Changes might occur in the future.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    for tag in oldtags:
+        curs.execute('''DELETE t1
+                        FROM tagged t1
+                        inner join tags t2
+                        using (tid) 
+                        where t1.pid = %s and t2.tag_name = %s''',[pid,tag])
+        conn.commit()
+    
+    for tag in newtags:
+        curs.execute("""select tid from tags where tag_name = %s""", [tag])
+        tag_id = curs.fetchone()
+        if not tag_id:
+            curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
+            conn.commit()
+            curs.execute("""select LAST_INSERT_ID()""")
+            tid = curs.fetchone()["LAST_INSERT_ID()"]
+        else:
+            tid = tag_id['tid']
+        curs.execute('''INSERT INTO tagged (tid,pid) values (%s,%s)''',(tid,pid))
+        conn.commit()
+        
     sql = '''UPDATE posts 
             SET title = %s, content = %s, location = %s, imagefile = %s, event_time = %s, 
-                event_date = %s, WHERE pid = %s'''
-    val = (title, content, location, imagefile, event_time, event_date, pid)
-    return curs.execute(sql, val)
+                event_date = %s, author=%s
+            WHERE pid = %s'''
+    val = (title, content, location, imagefile, event_time, event_date, author, pid)
+    curs.execute(sql, val)
+    conn.commit()
+    
+def deletePost(conn,pid):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute("""delete from starred where pid = %s""",[pid])
+    curs.execute("""delete from tagged where pid = %s""",[pid])
+    curs.execute("""DELETE FROM posts WHERE pid = %s""", [pid])
+    conn.commit()
     
 def readOnePost(conn,pid):
     ''' 
@@ -347,7 +690,8 @@ def readOnePost(conn,pid):
         
     curs.execute('''select * from posts where pid = %s''',[pid])
     post = curs.fetchone()
-    if post: # check if the pid is valid. if so, update the tag information
+    post['tags'] = []
+    if post is not None: # check if the pid is valid. if so, update the tag information
         curs.execute('''select * from tags inner join tagged 
                         on tags.tid =tagged.tid where tagged.pid=%s''',[pid])
         tags = [tag.get('tag_name') for tag in curs.fetchall()]
@@ -363,14 +707,14 @@ def searchPosts(conn,keyword='',tags=''):
         The current implementation only allows for searching by keyword (basicSearch)
     or keyword+tags (advancedSearch). Potentially, we would also want to allow 
     users to search posts according to event date, location, etc. Changes to this
-    function might occur in the future.
+    function will occur in the beta version.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
-    if tags != '': # search without tags
+    if tags != '': # search with tags
         curs.execute('''select * from posts inner join tagged using (pid) 
                     inner join tags using (tid) 
-                    where posts.title like %s and tags.tag_name in (%s)''', ["%"+keyword+"%",tags])
-    else: # search with tags
+                    where posts.title like %s and tags.tag_name like (%s)''', ["%"+keyword+"%","%"+tags+"%"])
+    else: # search without tags
         curs.execute('''select * from posts where posts.title like %s''', ["%"+keyword+"%"])
                     
     posts = curs.fetchall()
@@ -381,6 +725,207 @@ def searchPosts(conn,keyword='',tags=''):
         p['tags'] = tags
         row2utf8(p)
     return posts
+
+def isStarred(conn,pid,username):
+    ''' This post is used to determine whether a post has been starred. It returns
+        a dictionary with the pid and the username of the user if the user has
+        starred that post. Otherwise, it returns an empty set. 
+    '''
+    curs = curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from starred where pid = %s and username = %s''',(pid,username))
+    return curs.fetchone()
+    
+def starPost(conn,pid,username):
+    ''' This function is used when a user wants to 'star' a post. It adds an entry
+        to the starred table that shows that the user has starred that post. It 
+        also updates the posts table to show the new number of stars that the 
+        post has.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    starred = isStarred(conn,pid,username)
+    if starred is None:
+        curs.execute('''insert into starred (pid,username) values (%s, %s)''',(pid,username))
+        conn.commit()
+        curs.execute('''update posts set num_starred = num_starred + 1 where pid = %s''', (pid,))
+        conn.commit()
+    
+def unstarPost(conn,pid,username):
+    ''' This function is used when a user wants to 'unstar' a post. It removes
+        the relationship between that user and the post they unstarred from the 
+        starred table. It also updates the posts table to reflect the new number 
+        of stars that that post has. 
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    starred = isStarred(conn,pid,username)
+    if starred is not None:
+        curs.execute('''delete from starred where pid = %s and username = %s''',(pid,username))
+        conn.commit()
+        curs.execute('''update posts set num_starred = num_starred - 1 where pid = %s''', (pid,))
+        conn.commit()
+    
+def displayStarredEvents(conn,username):
+    ''' This function returns all the events that are starred by a particular user.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from starred 
+                    inner join posts using (pid) 
+                    where starred.username = %s''',[username])
+    return curs.fetchall()
+
+def displayPostsByUser(conn,username):
+    ''' This function returns all the posts where the user is also the author.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from posts 
+                    where author = %s''',[username])
+    return curs.fetchall()
+    
+def isAuthor(conn,pid,username):
+    ''' This function is used to determine whether the user is the author of a 
+        particular post. 
+    '''
+    curs = curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from posts where pid = %s and author = %s''',(pid,username))
+    return (curs.fetchone() is not None)
+    
+def isFollowed(conn,tid,username):
+    ''' This function is used to determine whether a particular tag is followed.
+        It returns a dictionary with the tag id and the username of the user if
+        the tag is followed, but returns an empty set if the user is not following
+        that tag.
+    '''
+    curs = curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from followed where tid = %s and username = %s''',(tid,username))
+    return curs.fetchone()
+    
+def followTag(conn,tid,username):
+    ''' This function adds an entry to the followed table when a user follows a 
+        particular tag. It also updates the tags table to reflect the number of 
+        users that are following that tag.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    followed = isFollowed(conn,tid,username)
+    if followed is None:
+        curs.execute('''insert into followed (tid,username) values (%s, %s)''',(tid,username))
+        conn.commit()
+        curs.execute('''update tags set num_followers = num_followers + 1 where tid = %s''', (tid,))
+        conn.commit()
+    curs.execute('''select num_followers from tags where tid = %s''',[tid])
+    return curs.fetchone()
+        
+        
+def unfollowTag(conn,tid,username):
+    ''' This function removes the relationship between a tag and a user when they
+        decide to unfollow a tag. It also updates the tag table and subtracts 1
+        from the number of followers of that particular tag.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    followed = isFollowed(conn,tid,username)
+    if followed is not None:
+        curs.execute('''delete from followed where tid = %s and username = %s''',(tid,username))
+        conn.commit()
+        curs.execute('''update tags set num_followers = num_followers - 1 where tid = %s''', (tid,))
+        conn.commit()
+    curs.execute('''select num_followers from tags where tid = %s''',[tid])
+    return curs.fetchone()
+
+def displayFollowedTags(conn,username):
+    ''' This function returns a dictionary of all the tags followed by the user
+        and the info associated with them. 
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    curs.execute('''select * from followed 
+                    inner join tags using (tid) 
+                    where followed.username = %s''',[username])
+    return curs.fetchall()
+
+def getTags(conn, tag_name=''):
+    ''' This function returns a dictionary of all the tags in the tags table.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    if tag_name != '':
+        curs.execute('''select * from tags where tags.tag_name like %s''', ["%"+tag_name+"%"])
+        allTags = curs.fetchall()
+    else:
+        curs.execute('''select * from tags''')
+        allTags = curs.fetchall()
+    
+    return allTags
+
+
+def getNumPostsThatUseTag(conn, tid):
+    ''' This function returns that number of posts that use a particular tag.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select tid,count(*) from tagged where tid = %s group by tid''', (tid,))
+    num = curs.fetchone()
+    
+    if num != None:
+        return num['count(*)']
+    else:
+        return 0
+    
+def getUserPhone(conn,username):
+    ''' This function returns the phone number of the user from the accounts 
+        table.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select phoneNum from accounts where username = %s''',[username])
+    phoneNum = curs.fetchone()
+    
+    return phoneNum
+    
+def updateUserPhone(conn,username,newNum):
+    ''' This function updates the user's phone number in the accounts table.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''update accounts set phoneNum = %s where username = %s''',(newNum,username))
+    conn.commit()
+    
+def getTotalStarsByPost(conn,pid):
+    ''' This function gets the total number of stars that each post has. 
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select count(*) from starred group by pid having pid = %s''',[pid])
+    numStars = curs.fetchone()
+    
+    return numStars # {'count(*)': 1}
+    
+def getTotalStarsByUser(conn,username):
+    ''' This function gets the total number of posts that each user has starred.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select count(*) from starred group by username having username = %s''',[username])
+    numStars = curs.fetchone()
+    
+    return numStars # {'count(*)': 1}
+    
+def getFeaturedEvents(conn):
+    ''' This function gets the three posts with the highest number of 'stars' 
+        because we want to feature events that students are most interested in
+        on our home page. The function also uses an inner join to get the tags
+        associated with each of those posts.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select * from posts order by num_starred desc limit 3''')
+    featuredEvents = curs.fetchall()
+    
+    for p in featuredEvents:
+        curs.execute('''select * from tags inner join tagged 
+                        on tags.tid =tagged.tid where tagged.pid=%s''',[p.get('pid')])
+        tags = [tag.get('tag_name') for tag in curs.fetchall()]
+        p['tags'] = tags
+        row2utf8(p)
+        
+    return featuredEvents
+    
     
 if __name__ == '__main__':
     conn = getConn('c9')
@@ -389,86 +934,22 @@ if __name__ == '__main__':
     # print(posts)
     # newpost = insertPost(conn,"testing_new_date_created", "testingfrompython", "tower", "5:01 pm", "2019-04-18")
     # print(newpost)
-    curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", ['hello'])
-    test = curs.fetchone()["""EXISTS(SELECT 1 from tags where tag_name = '%s')""",('hello')]
-    print(test)import os, re
-import MySQLdb
-
-def file_contents(filename):
-    with open(filename,'r') as f:
-        return f.read()
-
-def getpass(filename='~/mysql-passwd'):
-    '''returns the contents of the given file as a string.
-    
-You can store your MySQL password in there, separate from your source code'''
-    return file_contents(os.path.expanduser(filename))
-    
-# ==========================================================================================
-# Reading a file formatted like ~/.my.cnf
-
-def read_cnf_core(cnf_file=None):
-    '''Read a file formatted like ~/.my.cnf file; defaulting to that
-    file. Return a dictionary with the necessary information to connect to
-    a database. This function is an internal function. Consider using read_cnf(),
-    which caches the results.'''
-    if cnf_file is None:
-        cnf_file = os.path.expanduser('~/.my.cnf')
-    else:
-        cnf_file = os.path.expanduser(cnf_file)
-    cnf = file_contents(cnf_file)
-    credentials = {}
-    # the key is the name used in the CNF file;
-    # the value is the name used in the MySQLdb.connect() function
-    mapping = {'host':'host',
-               'user':'user',
-               'password':'passwd',
-               'database':'db'}
-    for key in ('host', 'user', 'password', 'database' ):
-        cred_key = mapping[key]
-        # using \w* permits empty passwords and such
-        # this regex is not perfect. It doesn't allow embedded spaces, for example.
-        regex = r"\b{k}\s*=\s*[\'\"]?(\w*)[\'\"]?".format(k=key)
-        # print 'regex',regex
-        p = re.compile(regex)
-        m = p.search(cnf)
-        if m:
-            credentials[ cred_key ] = m.group(1)
-        elif key == 'host' or key == 'database':
-            credentials[ cred_key ] = 'not specified in ' + cnf_file
-        else:
-            raise Exception('Could not find key {k} in {f}'
-                            .format(k=key,f=cnf_file))
-    checkDSN(credentials)
-    return credentials
-
-def checkDSN(dsn):
-    '''Raises a comprehensible error message if the DSN is missing some necessary info'''
-    for key in ('host', 'user', 'passwd', 'db' ):
-        if not key in dsn:
-            raise KeyError('''DSN lacks necessary '{k}' key'''.format(k=key))
-    return True
-    
-CNF = None
-
-def read_cnf(cnf_file="~/.my.cnf"):
-    global CNF
-    if CNF is not None:
-        return CNF
-    CNF = read_cnf_core(cnf_file)
-    return CNF
-    
-# ==========================================================================================
-def mysqlConnectCNF(db=None,filename="~/.my.cnf"):
-    CNF = read_cnf(filename)
-    if db is not None:
-        CNF['db'] = db
-    conn = MySQLdb.connect(**CNF)
-    conn.autocommit(True)
-    return conn
-
-
-<!DOCTYPE html>
+    #curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", ['hello'])
+    #test = curs.fetchone()["""EXISTS(SELECT 1 from tags where tag_name = '%s')""",('hello')]
+    # print(isStarred(conn,10,'wendy'))
+    # starPost(conn,10,'wendy')
+    # print(isStarred(conn,10,'wendy'))
+    # author18 = isAuthor(conn,18,'wanda')
+    # print(author18) # true
+    # author2 = isAuthor(conn,2,'wendy')
+    # print(author2) # false
+    # onePost = readOnePost(conn,19)
+    # a =  onePost['event_time']
+    # time_obj = datetime.datetime.strptime(str(a),'%I:%M:%S').time()
+    # print(type(time_obj))
+    # print(str(time_obj)[:5])
+    n = readOnePost(conn,1)
+    print(n)<!DOCTYPE html>
 <html>
     <head>
         <meta charset="utf-8">
@@ -477,14 +958,14 @@ def mysqlConnectCNF(db=None,filename="~/.my.cnf"):
         <link rel="stylesheet" href="{{url_for('static',filename='style.css')}}" type="text/css" />
 
         {% block headstuff %}
-        <ul>
+        <ul class = "banner header">
             <li><a href= "{{ url_for('home') }}">Home</a></li>
             {% if logged_in %}
             <li><a href = "{{ url_for('generalFeed') }}">General Feed</a></li>
             <li><a href = "{{ url_for('tagsList') }}">Tags List</a></li>
             <li><a href = "{{ url_for('createPost') }}">Create Event</a></li>
-            <li><a href = "{{ url_for('userPortal') }}" >User Portal</a></li>
-            <li><a href = "{{ url_for('logout') }}" > Logout </a></li>
+            <li class = "banner-tab-right"><a href = "{{ url_for('logout') }}"> Logout </a></li>
+            <li class = "banner-tab-right"><a href = "{{ url_for('userPortal') }}">User Portal</a></li>
             {% else %}
             <li><a href = "{{ url_for('login') }}" > Login </a></li>
             {% endif %}
@@ -528,7 +1009,7 @@ def mysqlConnectCNF(db=None,filename="~/.my.cnf"):
  
 <p>Fill out this form to insert an event post:</p>
 
-<form method="POST" action="">
+<form method="POST" action="" enctype="multipart/form-data">
 
     <fieldset>
     <legend>Event Info</legend>
@@ -543,6 +1024,8 @@ def mysqlConnectCNF(db=None,filename="~/.my.cnf"):
             <td><input type="date" name="post-eventdate" id="post-eventdate" value="{{ post.event_date if post else '' }}"></td></tr>
         <tr><td><label for="post-eventtime" accesskey="t">Time:</label></td>
             <td><input type="time" name="post-eventtime" id="post-eventtime" value="{{ post.event_time if post else '' }}"></td></tr>
+        <tr><td><label for="post-picture" accesskey="p">Photo:</label></td>
+            <td><input type="file" name="post-picture" id="post-picture" ></td></tr>
         <tr><td><label for="post-tags" accesskey="t">Tags:</label></td>
             <td><input placeholder="{{ '' if post else 'tag1,tag2' }}"type="text" name="post-tags" id="post-tags" value="{{ post.tags if post else '' }}"></td></tr>
         </table>
@@ -557,10 +1040,10 @@ def mysqlConnectCNF(db=None,filename="~/.my.cnf"):
 {% block content %}
     
     <form id="advancedSearch" method="POST" action={{ url_for("advancedSearch") }}>
-        <label class="advancedSearch">Title: 
-        <input id="searchterm" placeholder="{{ keyword }}" name="searchterm"></label>
-        <label class="advancedSearch">Tags: 
-        <input id="searchterm" placeholder="{{ tags }}" name="searchtags"/>
+        <label for="advancedSearch">Title: 
+        <input id="searchterm" placeholder="Search by keyword!" name="searchterm"></label>
+        <label for="advancedSearch">Tags: 
+        <input id="searchterm" placeholder="Search by tag!" name="searchtags"/>
         </label>
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>
@@ -569,22 +1052,83 @@ def mysqlConnectCNF(db=None,filename="~/.my.cnf"):
         <tr>
             <th>Title</th>
             <th>Location</th>
-            <th>Event_Date</th>
-            <th>Event_Time</th>
-            <th>Event_Tags</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Tags</th>
+            <th>Author</th>
+            {% if logged_in %}
+            <th>Star Status</th>
+            {% endif %}
         </tr>
         {% if posts %}
         {% for post in posts %}
         <tr data-pid={{ post.pid }}>
-            <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td>
+            <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td> 
             <td class="location">{{ post.location }}</td>
             <td class="event_date">{{ post.event_date }}</td>
             <td class="event_time">{{ post.event_time }}</td>
-            <td class="tags">{{ post.tags }}</td>
+            <td class="tags">
+                {% for tag in post.tags %}
+                <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> 
+                {% endfor %}
+            </td>
+            <td class="post_author">{{ post.author }}</td>
+            {% if logged_in %}
+            <td>
+                <form method="post" action="{{ url_for('starAjax') }}">
+                    <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ post.pid }}"></label>
+                    <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ post.starred }}"></label>
+                    <label class = "star-event">
+                        <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred == '1' else 'Star the Event'}}">
+                    </label>
+                </form>
+            </td>
+            {% endif %}
         </tr>
         {% endfor %}
         {% endif %}
     </table>
+
+{% endblock %}
+
+{% block jquery_scripts %}
+<script>
+    
+    var star_URL = "{{ url_for('starAjax') }}";
+    
+    $("label.star-event").on("click", function (event) {
+        event.preventDefault();
+        var starred = $(event.target).closest("form").find("input[name='starred']").val();
+        var pid = $(event.target).closest("form").find("input[name='pid']").val();
+        var button = $(this).find("input[name=star-event]");
+        sendStar(pid,starred,button);
+    });
+    
+    function sendStar(pid,starred,button) {
+        console.log("Sending "+pid +" and " + starred +" to the back end");
+        $.post(star_URL,{'error':false, 'pid': pid, 'starred': starred},
+        function(data,status){
+            updateStar(data,button);
+        },'json');
+    }
+    
+    function updateStar(obj,button) {
+        console.log(obj);
+        if(obj.error) {
+            alert(obj.err);
+        } else {
+            console.log("changing star status to be " + obj.starred)
+            if (obj.starred == "1") {
+                button.val('Starred -- Click to unstar');
+            } else {
+                button.val('Star the Event');
+            }
+            button.closest("form").find("input[name=starred]").val(obj.starred);
+        }
+    }
+
+
+</script>
 
 {% endblock %}{% extends "base.html" %}
  
@@ -598,13 +1142,41 @@ def mysqlConnectCNF(db=None,filename="~/.my.cnf"):
 <p>Please log in to use the platform.</p>
 {% endif %}
 
-<p>Featured Events:</p>
+<form id="basicSearch" method="POST" action="{{ url_for("basicSearch") }}">
+    <label for="basicSearch"><input id="searchterm" placeholder="Search" name="searchterm"/></label>
+    <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
+</form>
+    
 <br>
-Search:
-    <form id="basicSearch" method="POST" action="{{ url_for("basicSearch") }}">
-        <input id="searchterm" placeholder="Search" name="searchterm"/>
-        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
-    </form>
+
+<p>Featured Events! See what Wellesley students are most interested in!</p>
+<table id="posts-list">
+    <tr>
+        <th>Title</th>
+        <th>Location</th>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Tags</th>
+        <th>Author</th>
+    </tr>
+    {% if featuredEvents %}
+    {% for post in featuredEvents %}
+    <tr data-pid={{ post.pid }}>
+        <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td> 
+        <td class="location">{{ post.location }}</td>
+        <td class="event_date">{{ post.event_date }}</td>
+        <td class="event_time">{{ post.event_time }}</td>
+        <td class="tags">
+            {% for tag in post.tags %}
+            <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> 
+            {% endfor %}
+        </td>
+        <td class="post_author">{{ post.author }}</td>
+    </tr>
+    {% endfor %}
+    {% endif %}
+</table>
+
 {% endblock %}{% extends "base.html" %}
 
    {# <!--wellesley drone video -->    
@@ -621,21 +1193,14 @@ Search:
 {# replaces default content block #}
 {% block content %}
 
-{# 
- <form id="search" method=POST action="{{url_for('search')}}">
-        <input id="searchterm" placeholder="Search" name="searchterm">
-        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
-</form>
-#}
-
 <p>Please login using your Wellesley account information:</p>
   
  
 <form id="joinform" style="display: none;" action="{{url_for('join')}}" method="post">
     <h2>Join</h2>
-    <p><label>Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
-    <p><label>Password: <input type="password" name="password1" required></label></p>
-    <p><label>Password again: <input type="password" name="password2" required></label></p>
+    <p><label for="username_reg">Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
+    <p><label for="password_reg">Password: <input type="password" name="password1" required></label></p>
+    <p><label for="password2_reg">Password again: <input type="password" name="password2" required></label></p>
     <p><button id="register-btn" type="submit">Register</button> 
         <button type="" id="register2login">I have an account</button></p>
 </form>
@@ -643,8 +1208,8 @@ Search:
     
 <form id="loginform" style="display: block;" action="{{url_for('loginAction')}}" method="post">
     <h2>Login</h2>
-    <p><label>Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
-    <p><label>Password: <input type="password" name="password" required></label></p>
+    <p><label for="username_login">Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
+    <p><label for="password_login">Password: <input type="password" name="password" required></label></p>
     <p><button type="submit" id="login-btn">Login</button> 
         <button type="" id="login2register">I don't have an account</button></p>
 </form>
@@ -661,18 +1226,18 @@ Search:
 $("#joinform").on('submit', function (event) {
      var pw1 = $(this).find('[name=password1]').val();
      var pw2 = $(this).find('[name=password2]').val();
-     // should also check for length and common words etc
      if( pw1 != pw2 ) {
-         // something more sophisticated than alert would be nice
          alert("passwords don't match");
      }
 });
 
+// event handler to switch from login mode to register
 $("#login2register").on('click',function(){
     $("#joinform").show();
     $("#loginform").hide();
 });
 
+// event handler to switch from register mode to login
 $("#register2login").on('click',function(){
     $("#loginform").show();
     $("#joinform").hide();
@@ -684,52 +1249,407 @@ $("#register2login").on('click',function(){
  
 {# replaces default content block #}
 {% block content %}
-
 {% if post %} 
-<p>Event name: {{ post.title }}</p>
+<h3>{{ post.title }}</h3>
+<p>Created at {{ post.time_created }} by {{ post.author }}
+    <ul class="post-buttons">
+    <li>{% if isAuthor %}
+    <a style="padding:0px; padding-right:10px;" href="{{ url_for('updatePost',pid=post.pid) }}">
+        <button class="edit-post" type="button" >Edit the Post</button>
+    </a>
+    {% endif %}</li>
+    
+    <li>{% if logged_in %}
+    <form method="post" action="{{ url_for('starAjax') }}">
+        <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ post.pid }}"></label>
+        <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ post.starred }}"></label>
+        <label class ="star-event">
+            <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred == '1' else 'Star the Event'}}">
+        </label>
+    </form>
+    {% endif %}</li>
+    </ul>
+    
+    
+</p>
+
+{# double check if picture exists, if not then display an empty string #}
+<p><img src="{{ url_for('pic',pid=post.pid) }}" alt="" width="50%" ></p>
+
 <p>Description: {{ post.content }}</p>
 <p>Location: {{ post.location }}</p>
 <p>Event date: {{ post.event_date }}</p>
 <p>Event time: {{ post.event_time }}</p>
-<p>Time created: {{ post.time_created }}</p>
-<p>Tags: {{ post.tags }}</p>
+<p class = "tags">Tags:
+    {% for tag in post.tags %}
+    <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> 
+    {% endfor %}
+</p>
+
 {% endif %}
 
-{% endblock %}{% extends "base.html" %}
- 
-{# replaces default content block #}
-{% block content %}
- 
-<p>This is the Tags List page</p>
 
-<p>Some tags</p>
-<!--<br>-->
-<!--Search:-->
-<!--    <form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>-->
-<!--        <input id="searchterm" placeholder="Search" name="searchterm"/>-->
-<!--        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>-->
-<!--    </form>-->
-{% endblock %}{% extends "base.html" %}
- 
-{# replaces default content block #}
-{% block content %}
-<h3>Hello, {{ username }}!</h3> 
+{% endblock %}
+
+{% block jquery_scripts %}
+<script>
+    var star_URL = "{{ url_for('starAjax') }}";
     
-<p> Profile and Preferences </p>
-<p> Manage my posts </p>
-<p> Manage my Stars </p>
-<p> Manage tags I am following </p>
+    $("label.star-event").on("click", function (event) {
+        event.preventDefault();
+        var starred = $(event.target).closest("form").find("input[name='starred']").val();
+        console.log(starred);
+        var pid = $(event.target).closest("form").find("input[name='pid']").val();
+        console.log(pid);
+        var button = $(this).find("input[name=star-event]");
+        sendStar(pid,starred,button);
+    });
+    
+    function sendStar(pid,starred,button) {
+        console.log("Sending "+pid +" and " + starred +" to the back end");
+        $.post(star_URL,{'error':false, 'pid': pid, 'starred': starred},
+        function(data,status){
+            updateStar(data,button);
+        },'json');
+    }
+    
+    function updateStar(obj,button) {
+        console.log(obj);
+        if(obj.error) {
+            alert(obj.err);
+        } else {
+            console.log("changing star status to be " + obj.starred)
+            if (obj.starred == "1") {
+                button.val('Starred -- Click to unstar');
+            } else {
+                button.val('Star the Event');
+            }
+            button.closest("form").find("input[name=starred]").val(obj.starred);
+        }
+    }
+</script>
+{% endblock %}{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+ 
+    <p>This is the Tags List page</p>
+    
+    <form id="tagsSearch" method="POST" action={{ url_for("tagsSearch") }}>
+        <label class="tagsSearch">Search Tags: 
+        <input id="searchtags" placeholder="Enter a tag!" name="searchtags"/>
+        </label>
+        <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
+    </form>
+    
+    <p>All Tags</p>
+    <table id="tags-list">
+        <tr>
+            <th>Tag Name</th>
+            <th>Number of Posts</th>
+            <th>Number of Followers</th>
+            <th>Follow Status</th>
+            
+        </tr>
+        {% if tags %}
+        {% for tag in tags %}
+        <tr data-tid={{ tag.tid }}>
+            <td class="tag_name"><a href="{{ url_for('searchTag',tag=tag.tag_name) }}">{{ tag.tag_name }}</a></td>
+            <td class="num_posts">{{ tag.num_posts }}</td>
+            <td class="num_followers">{{ tag.num_followers }}</td>
+            <td>
+                <form method="post" action="{{ url_for('followAjax') }}">
+                    <label class="tid"><input type="hidden" name="tid" class="tid" value="{{ tag.tid }}"></label>
+                    <label class="followed"><input type="hidden" name="followed" class="followed" value="{{ tag.followed }}"></label>
+                    <label class = "follow-tag">
+                        <input type="button" name="follow-tag" value="{{'Followed -- Click to unfollow' if tag.followed == '1' else 'Follow the Tag'}}">
+                    </label>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        {% endif %}
+        
+    </table>
 
-<!--<form id="basicSearch" method="POST" action={{ url_for("basicSearch") }}>-->
-<!--    <input id="searchterm" placeholder="Search" name="searchterm"/>-->
-<!--    <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>-->
-<!--</form>-->
+{% endblock %}
+
+{% block jquery_scripts %}
+<script>
+    var URL = "{{ url_for('followAjax') }}";
+    
+    $("label.follow-tag").on("click", function (event) {
+        event.preventDefault();
+        var followed = $(event.target).closest("form").find("input[name='followed']").val();
+        console.log("follow: " + followed);
+        var tid = $(event.target).closest("form").find("input[name='tid']").val();
+        var button = $(this).find("input[name=follow-tag]");
+        sendFollow(tid,followed,button);
+    });
+    
+    function sendFollow(tid,followed,button) {
+        console.log("Sending "+tid +" and " + followed +" to the back end");
+        $.post(URL,{'error':false, 'tid': tid, 'followed': followed},
+        function(data,status){
+            updateFollow(data,button);
+        },'json');
+    }
+    
+    function updateFollow(obj,button) {
+        console.log(obj);
+        if(obj.error) {
+            // $("#errors").empty().html('Error: '+obj.err);
+            alert(obj.err);
+        } else {
+            console.log("changing follow status to be " + obj.followed)
+            if (obj.followed == "1") {
+                button.val('Followed -- Click to unfollow');
+            } else {
+                button.val('Follow the Tag');
+            }
+            button.closest("form").find("input[name=followed]").val(obj.followed);
+            button.closest("[data-tid]").find(".num_followers").text(obj.numFollows);
+        }
+    }
+</script>
+{% endblock %}{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+ 
+<p>Fill out this form to UPDATE an event post:</p>
+    <form method=POST action={{ url_for("updatePost",pid=post.pid) }} enctype="multipart/form-data">
+        
+    <fieldset>
+    <legend>Event Info</legend>
+        <table>
+        <tr><td><label for="post-title" accesskey="t">Event Name:</label></td>
+            <td><input type="text" name="post-title" id="post-title" value="{{ post.title }}"></td></tr>
+        <tr><td><label for="post-content" accesskey="c">Description:</label></td>
+            <td><input type="text" name="post-content" id="post-content" value="{{ post.content }}"></td></tr>
+        <tr><td><label for="post-location" accesskey="l">Location:</label></td>
+            <td><input type="text" name="post-location" id="post-location" value="{{ post.location }}"></td></tr>
+        <tr><td><label for="post-eventdate" accesskey="d">Date:</label></td>
+            <td><input type="date" name="post-eventdate" id="post-eventdate" value="{{ post.event_date }}"></td></tr>
+        <tr><td><label for="post-eventtime" accesskey="t">Time:</label></td>
+            <td><input type="time" name="post-eventtime" id="post-eventtime" value="{{ post.event_time }}"></td></tr>
+        <tr><td><label for="post-picture" accesskey="p">Photo:</label></td>
+            <td><input type="file" name="post-picture" id="post-picture" ></td></tr>
+        <tr><td><label for="post-tags" accesskey="t">Tags:</label></td>
+            <td><input type="text" name="post-tags" id="post-tags" value="{{ post.tags }}"></td></tr>
+        </table>
+        
+    </fieldset>
+
+        <p> <input type="submit" name="submit" value="update">
+        <input type="submit" name="submit" value="delete"> </p>
+
+    </form>
+{% endblock %}{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+<a href="{{ url_for('userPortal') }}">Back to User Portal</a>
+ 
+<p>Fill out this form to UPDATE your contact information for event notifications:</p>
+    <form method=POST action={{ url_for("updateProfile") }}>
+        
+    <fieldset>
+        <table>
+        <tr><td><label for="phoneNum">Phone Number:</label></td>
+            <td><input type="text" name="phoneNum" id="phoneNum" value="{{ num }}"></td></tr>
+        </table>
+        
+    </fieldset>
+
+        <p> <input type="submit" name="submit" value="update"></p>
+
+    </form>
+{% endblock %}{% extends "base.html" %}
+ 
+{# replaces default content block #}
+{% block content %}
+<h3 style="color:blue;">Hello, {{ username }}!</h3> 
+
+<h4> <a href=" {{url_for('updateProfile')}} ">Profile and Preferences</a> </h4>
+<h4 style="text-align:center;"> Manage my Starred Posts </h4>
+<br>
+     <table id="posts-list">
+        <tr>
+            <th>Title</th>
+            <th>Location</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Tags</th>
+            <th>Author</th>
+            <th>Star Status</th>
+        </tr>
+        {% for star in stars %}
+        <tr data-pid={{ star.pid }}>
+            <td class="title"><a href="{{ url_for('displayPost',pid=star.pid) }}">{{ star.title }}</a></td> 
+            <td class="location">{{ star.location }}</td>
+            <td class="event_date">{{ star.event_date }}</td>
+            <td class="event_time">{{ star.event_time }}</td>
+            <td class="tags">
+                {% for tag in star.tags %}
+                <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> 
+                {% endfor %}
+            </td>
+            <td class="post_author">{{ star.author }}</td>
+            <td>
+                <form method="post" action="{{ url_for('starAjax') }}">
+                    <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ star.pid }}"></label>
+                    <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ star.starred }}"></label>
+                    <label class = "star-event">
+                        <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if star.starred == '1' else 'Star the Event'}}">
+                    </label>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+<br>
+<h4 style="text-align:center;"> Manage my Followed Tags </h4>
+<br>
+<table id="tags-list">
+        <tr>
+            <th>Tag Name</th>
+            <th>Number of Posts</th>
+            <th>Number of Followers</th>
+            <th>Follow Status</th>
+            
+        </tr>
+        {% for follow in follows %}
+        <tr data-tid={{ follow.tid }}>
+            <td class="tag_name"><a href="{{ url_for('searchTag',tag=follow.tag_name) }}">{{ follow.tag_name }}</a></td>
+            <td class="num_posts">{{ follow.num_posts }}</td>
+            <td class="num_followers">{{ follow.num_followers }}</td>
+            <td>
+                <form method="post" action="{{ url_for('followAjax') }}">
+                    <label class="tid"><input type="hidden" name="tid" class="tid" value="{{ follow.tid }}"></label>
+                    <label class="followed"><input type="hidden" name="followed" class="followed" value="{{ follow.followed }}"></label>
+                    <label class = "follow-tag">
+                        <input type="button" name="follow-tag" value="{{'Followed -- Click to unfollow' if follow.followed == '1' else 'Follow the Tag'}}">
+                    </label>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+
+    </table>
+<br>
+<h4 style="text-align:center;"> Manage my Created Posts </h4>
+<br>
+    <table id="created-posts-list">
+        <tr>
+            <th>Title</th>
+            <th>Location</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Edit Post</th>
+        </tr>
+        {% for post in posts %}
+        <tr data-pid={{ post.pid }}>
+            <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td> 
+            <td class="location">{{ post.location }}</td>
+            <td class="event_date">{{ post.event_date }}</td>
+            <td class="event_time">{{ post.event_time }}</td>
+            <td>
+                <a href="{{ url_for('updatePost',pid=post.pid) }}">
+                    <button class="edit-post" type="button" >Edit the Post</button>
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+{% endblock %}
+
+{% block jquery_scripts %}
+<script>
+    var star_URL = "{{ url_for('starAjax') }}";
+    
+    $("label.star-event").on("click", function (event) {
+        event.preventDefault();
+        var starred = $(event.target).closest("form").find("input[name='starred']").val();
+        var pid = $(event.target).closest("form").find("input[name='pid']").val();
+        var button = $(this).find("input[name=star-event]");
+        sendStar(pid,starred,button);
+    });
+    
+    function sendStar(pid,starred,button) {
+        console.log("Sending "+pid +" and " + starred +" to the back end");
+        $.post(star_URL,{'error':false, 'pid': pid, 'starred': starred},
+        function(data,status){
+            updateStar(data,button);
+        },'json');
+    }
+    
+    function updateStar(obj,button) {
+        console.log(obj);
+        if(obj.error) {
+            alert(obj.err);
+        } else {
+            console.log("changing star status to be " + obj.starred)
+            if (obj.starred == "1") {
+                button.val('Starred -- Click to unstar');
+            } else {
+                button.val('Star the Event');
+            }
+            button.closest("form").find("input[name=starred]").val(obj.starred);
+        }
+    }
+
+    var URL = "{{ url_for('followAjax') }}";
+    
+    $("label.follow-tag").on("click", function (event) {
+        event.preventDefault();
+        var followed = $(event.target).closest("form").find("input[name='followed']").val();
+       // var followed = $(event.target).closest("form").find("input[name='followed']").is(":checked");
+        console.log("follow: " + followed);
+        // if(!followed) {
+        // if (event.target != this) return;
+            // followed = true;
+        // } else {
+            // followed = false;
+        // }
+        var tid = $(event.target).closest("form").find("input[name='tid']").val();
+        var button = $(this).find("input[name=follow-tag]");
+        sendFollow(tid,followed,button);
+    });
+    
+    function sendFollow(tid,followed,button) {
+        console.log("Sending "+tid +" and " + followed +" to the back end");
+        $.post(URL,{'error':false, 'tid': tid, 'followed': followed},
+        function(data,status){
+            updateFollow(data,button);
+        },'json');
+    }
+    
+    function updateFollow(obj,button) {
+        console.log(obj);
+        if(obj.error) {
+            // $("#errors").empty().html('Error: '+obj.err);
+            alert(obj.err);
+        } else {
+            console.log("changing follow status to be " + obj.followed)
+            if (obj.followed == "1") {
+                button.val('Followed -- Click to unfollow');
+            } else {
+                //button.closest("form").find("input[name=followed]").prop(checked, false);
+                button.val('Follow the Tag');
+            }
+            button.closest("form").find("input[name=followed]").val(obj.followed);
+            button.closest("[data-tid]").find(".num_followers").text(obj.numFollows);
+        }
+    }
+</script>
 {% endblock %}body {
     font-family: Tahoma;
 }
 
 h1 {
-    color: mediumaquamarine;
+    color: navy;
     font-family: 'Comic Sans MS';
 }
 
@@ -742,9 +1662,18 @@ ul {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: teal;
+  background-color: navy;
 }
 
+.post-buttons {
+  background-color: white;
+  text-align: center;
+  display: inline-block;
+}
+
+.banner-tab-right {
+  float: right;
+}
 
 li {
   float: left;
@@ -756,15 +1685,53 @@ li a {
   text-align: center;
   padding: 14px 16px;
   text-decoration: none;
+  font-weight: bold;
 }
 
 /* Change the link color to #111 (black) on hover */
 li a:hover {
-  background-color: lightseagreen;
+  background-color: lightskyblue;
 }
 
 table {
-  border-color: seagreen;
+  border-collapse: collapse;
+  width: 100%;
+  color: navy;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even){background-color: #f2f2f2}
+
+th {
+  background-color: navy;
+  color: white;
+}
+
+.edit-post, input {
+  width: 50;
+  padding: 8px 20px;
+  margin: 0px 0;
+  border: 1px solid navy;
+  background-color: white;
+  color: navy;
+  font-size: 16px;
+}
+
+button {
+  background-color: navy;
+  border: none;
+  color: white;
+  padding: 8px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 0;
+  cursor: pointer;
 }
 
 p {
@@ -790,16 +1757,16 @@ p {
 drop table if exists isReported;
 drop table if exists tagged;
 drop table if exists starred;
-drop table if exists posted;
 drop table if exists followed;
-drop table if exists accounts;
-drop table if exists posts;
 drop table if exists tags;
+drop table if exists posts;
+drop table if exists accounts;
 
 create table accounts (
     username varchar(30) primary key,
     hashed varchar(60),
-    isAdmin boolean
+    isAdmin boolean,
+    phoneNum varchar(3)
 );
 
 create table posts (
@@ -808,17 +1775,19 @@ create table posts (
     content varchar(1000),
     time_created datetime,
     location varchar(60),
-    num_starred int unsigned,
+    num_starred int unsigned default 0,
     imagefile varchar(60),
     event_time time NOT NULL,
-    event_date date NOT NULL
+    event_date date NOT NULL,
+    author varchar(30) NOT NULL,
+    foreign key (author) references accounts(username) on delete restrict on update cascade
 );
 
 
 create table tags (
     tid int auto_increment primary key,
     tag_name varchar(100),
-    num_followers int unsigned
+    num_followers int unsigned default 0
 );
 
 create table tagged (
@@ -833,14 +1802,6 @@ create table starred (
     pid int NOT NULL,
     username varchar(30) NOT NULL,
     primary key (pid, username),
-    foreign key (pid) references posts(pid) on delete restrict on update cascade,
-    foreign key (username) references accounts(username) on delete restrict on update cascade
-);
-
-create table posted (
-    pid int NOT NULL,
-    username varchar(30) NOT NULL,
-    primary key (pid,username),
     foreign key (pid) references posts(pid) on delete restrict on update cascade,
     foreign key (username) references accounts(username) on delete restrict on update cascade
 );
