@@ -30,8 +30,9 @@ app.secret_key = 'draft'
 app.config['TRAP_BAD_REQUEST_ERRORS'] = True
 
 app.config['UPLOADS'] = 'uploads'
-#app.config['MAX_UPLOAD'] = 256000
-app.config['MAX_UPLOAD'] = 2097152 #-- 2.0 MB
+# app.config['MAX_UPLOAD'] = 256000 -- 1.4 MB
+app.config['MAX_UPLOAD'] = 1572864 # -- 1.5 MB
+# app.config['MAX_UPLOAD'] = 2097152 -- 2.0 MB
 
 @app.route('/')
 def home():
@@ -528,5 +529,5 @@ def followAjax():
 
 if __name__ == '__main__':
     app.debug = True
-    app.run('0.0.0.0',8082)
+    app.run('0.0.0.0',8081)
 
