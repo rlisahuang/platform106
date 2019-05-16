@@ -123,18 +123,22 @@ def updateProfile():
     conn = info.getConn('c9')
     usr=session.get('username')
     oldNum = info.getUserPhone(conn,usr)
+    oldEmail = info.getUserEmail(conn,usr)
     
     if request.method == "GET":
         # set up the page and pre-fill the form using info from database
-        oldNum = oldNum['phoneNum']
         num = "" if oldNum is None else oldNum
-        return render_template('updateProfile.html', num=num,logged_in=session.get('logged_in',False))
+        email = "" if oldEmail is None else oldEmail
+        return render_template('updateProfile.html', num=num, email=email, logged_in=session.get('logged_in',False))
         
     else:
         # the update function, grab info filled in by the user
         newNum = request.form.get("phoneNum")
+        newEmail = request.form.get("email")
         info.updateUserPhone(conn, usr, newNum)
+        info.updateUserEmail(conn, usr, newEmail)
         print("Phone number of ({}) was updated successfully.".format(usr))
+        print("Email of ({}) was updated successfully.".format(usr))
         return redirect(url_for('updateProfile'))
 
 
@@ -244,8 +248,9 @@ def displayPost(pid):
         starred = info.isStarred(conn,pid,username)
         isAuthor = info.isAuthor(conn,pid,username)
         postInfo["starred"] = "0" if starred is None else "1"
+        authorEmail = info.getAuthorEmail(conn, postInfo['author'])
     
-        return render_template('post.html',isAuthor=isAuthor,post=postInfo,logged_in=logged_in)
+        return render_template('post.html',isAuthor=isAuthor,post=postInfo,logged_in=logged_in, authorEmail=authorEmail)
     
     else:
         return render_template('post.html',post=postInfo,logged_in=logged_in)
@@ -484,9 +489,16 @@ def starAjax():
         usr = session.get('username')
         pid = request.form.get('pid')
         starred = request.form.get('starred')
+        usrPhone = info.getUserPhone(conn, usr)
+        print(usrPhone)
+        usrEmail = info.getUserEmail(conn, usr)
+        print(usrEmail)
 
-        # check if user is logged in
-        if usr is not None:
+        # check if user has updated their profile information
+        if usrPhone is None or usrPhone is "" or usrEmail is None or usrEmail is "":
+            print("Need to update phone number or email in user profile!")
+            return jsonify( {'error': True, 'err': "Need to update phone number or email in user profile!"} )
+        else:
             print(starred)
             print(type(starred))
             if starred == "0":
@@ -497,9 +509,6 @@ def starAjax():
                 info.unstarPost(conn,pid,usr)
                 print("post {} is unstarred by user {}".format(pid,usr))
                 return jsonify( {'error':False, 'pid': pid, 'starred': "0"} )
-        else:
-            print("Need to login")
-            return jsonify( {'error': True, 'err': "need to login"} )
 
 """ The route for follow/unfollow tag with ajax """     
 @app.route('/followAjax',methods=['POST'])      
@@ -510,9 +519,11 @@ def followAjax():
         tid = request.form.get('tid')
         followed = request.form.get('followed')
         print(followed)
+        usrPhone = info.getUserPhone(conn, usr)
+        usrEmail = info.getUserEmail(conn, usr)
 
-        # check if user is logged in
-        if usr is not None:
+        # check if user has updated their profile information
+        if usrPhone is not None or usrEmail is not None:
             if followed == "0":
                 print(tid)
                 print(usr)
@@ -524,8 +535,8 @@ def followAjax():
                 print("post {} is unfollowed by user {}".format(tid,usr))
                 return jsonify( {'error':False, 'tid': tid, 'followed': "0", 'numFollows': numFollows} )
         else:
-            print("Need to login")
-            return jsonify( {'error': True, 'err': "need to login"} )
+            print("Need to update phone number or email in user profile!")
+            return jsonify( {'error': True, 'err': "Need to update phone number or email in user profile!"} )
 
 if __name__ == '__main__':
     app.debug = True

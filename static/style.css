@@ -4,7 +4,8 @@ body {
 
 h1 {
     color: navy;
-    font-family: 'Comic Sans MS';
+    font-family: Tahoma;
+    margin: 5px;
 }
 
 .subhead{
@@ -42,7 +43,6 @@ li a {
   font-weight: bold;
 }
 
-/* Change the link color to #111 (black) on hover */
 li a:hover {
   background-color: lightskyblue;
 }
@@ -69,10 +69,14 @@ th {
   width: 50;
   padding: 8px 20px;
   margin: 0px 0;
-  border: 1px solid navy;
-  background-color: white;
-  color: navy;
+  /*border: 1px solid navy;*/
+  background-color: navy;
+  color: white;
   font-size: 16px;
+}
+
+input:hover, button:hover {
+  background-color: lightskyblue;
 }
 
 button {
@@ -90,8 +94,8 @@ button {
 
 p {
   color: navy;
+  margin: 5px;
 }
-
 
 #messages {
   border: 3px solid red;
@@ -101,9 +105,27 @@ p {
 	padding-left: 30px;
 }
 
-/*
-#messages { 
-    color: red;
-
+.card {
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+  max-width: 300px;
+  margin: 15px;
+  display: inline-block;
+  text-align: center;
+  font-family: Tahoma;
 }
-*/
+
+cardContent {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+img.cardimg {
+  width: 100%;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.title {
+  color: navy;
+  font-size: 18px;
+}

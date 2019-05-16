@@ -12,7 +12,7 @@ create table accounts (
     username varchar(30) primary key,
     hashed varchar(60),
     isAdmin boolean,
-    phoneNum varchar(3)
+    phoneNum varchar(10)
 );
 
 create table posts (

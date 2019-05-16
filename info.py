@@ -344,7 +344,7 @@ def getUserPhone(conn,username):
     curs.execute('''select phoneNum from accounts where username = %s''',[username])
     phoneNum = curs.fetchone()
     
-    return phoneNum
+    return phoneNum['phoneNum']
     
 def updateUserPhone(conn,username,newNum):
     ''' This function updates the user's phone number in the accounts table.
@@ -353,6 +353,36 @@ def updateUserPhone(conn,username,newNum):
     
     curs.execute('''update accounts set phoneNum = %s where username = %s''',(newNum,username))
     conn.commit()
+    
+def getUserEmail(conn,username):
+    ''' This function returns the email of the user from the accounts 
+        table.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select email from accounts where username = %s''',[username])
+    email = curs.fetchone()
+    
+    return email['email']
+    
+def updateUserEmail(conn,username,newEmail):
+    ''' This function updates the user's email address in the accounts table.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''update accounts set email = %s where username = %s''',(newEmail,username))
+    conn.commit()
+    
+def getAuthorEmail(conn, author):
+    ''' This function returns the email of the author of a post from the accounts 
+        table.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select email from accounts where username = %s''',[author])
+    email = curs.fetchone()
+    
+    return email['email']
     
 def getTotalStarsByPost(conn,pid):
     ''' This function gets the total number of stars that each post has. 
