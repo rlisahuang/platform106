@@ -4,10 +4,10 @@
 {% block content %}
     
     <form id="advancedSearch" method="POST" action={{ url_for("advancedSearch") }}>
-        <label for="advancedSearch">Title: 
+        <label for="searchterm">Title: 
         <input id="searchterm" placeholder="Search by keyword!" name="searchterm"></label>
-        <label for="advancedSearch">Tags: 
-        <input id="searchterm" placeholder="Search by tag!" name="searchtags"/>
+        <label for="searchtags">Tags: 
+        <input id="searchtags" placeholder="Search by tag!" name="searchtags"/>
         </label>
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>

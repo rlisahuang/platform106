@@ -64,7 +64,7 @@ def tagsList(tag):
         followed = "0" if followed is None else "1"
         tag['followed'] = followed
 
-    return render_template('tagsList.html', title = "Tags List", tags=tags, logged_in=logged_in)
+    return render_template('tagsList.html', isAdmin = session.get('admin',False), title = "Tags List", tags=tags, logged_in=logged_in)
  
 # url for tags search FORM (in tagsList page)        
 @app.route('/tagsSearch',methods=['POST'])
@@ -96,7 +96,7 @@ def userPortal():
     for follow in follows:
         follow['followed'] = "1"
 
-    return render_template('userPortal.html', title = "User Portal", stars=stars,
+    return render_template('userPortal.html', isAdmin=session.get('admin',False),title = "User Portal", stars=stars,
                         posts=posts, follows=follows, username=usr,logged_in=logged_in)
 
 @app.route('/userPortal/updateProfile/', methods=['GET','POST'])
@@ -234,7 +234,7 @@ def displayPost(pid):
         isAuthor = info.isAuthor(conn,pid,username)
         postInfo["starred"] = "0" if starred is None else "1"
     
-        return render_template('post.html',isAuthor=isAuthor,post=postInfo,logged_in=logged_in)
+        return render_template('post.html',isAdmin=session.get('admin',False),isAuthor=isAuthor,post=postInfo,logged_in=logged_in)
     
     else:
         return render_template('post.html',post=postInfo,logged_in=logged_in)
@@ -268,11 +268,7 @@ def updatePost(pid):
     oldtags = post.get('tags')
     
     if request.method == "GET":
-        # set up the page and pre-fill the form using info from database
-        if len(oldtags) == 0:
-            post['tags'] = ''
-        else:
-            post['tags'] = ",".join(oldtags)
+        post['tags'] = ",".join(oldtags)
         return render_template('updatePost.html', post=post,logged_in=session.get('logged_in',False))
     
     else:
@@ -282,8 +278,13 @@ def updatePost(pid):
             if filename is not None:
                 os.remove(os.path.join(app.config['UPLOADS'], filename))
             info.deletePost(conn,pid)
-            flash("Post ({}) was deleted successfully.".format(pid))
-            print("Post ({}) was deleted successfully.".format(pid))
+            isAdmin = session.get('admin',False)
+            if isAdmin:
+                flash("Post ({}) was deleted successfully by ADMIN.".format(pid))
+                print("Post ({}) was deleted successfully by ADMIN.".format(pid))
+            else:
+                flash("Post ({}) was deleted successfully.".format(pid))
+                print("Post ({}) was deleted successfully.".format(pid))
             return redirect(url_for('userPortal'))
        
         # the update function, grab info filled in by the user
@@ -293,7 +294,7 @@ def updatePost(pid):
             location = request.form.get('post-location')
             date = request.form.get('post-eventdate')
             time = request.form.get('post-eventtime')
-            newtags = request.form.get('post-tags','').split(',')
+            newtags = request.form.get('post-tags','')
             picture = request.files.get('post-picture',None)
             
             error = checkRequiredInfo(title,location,date,time)
@@ -330,8 +331,9 @@ def updatePost(pid):
                         post['tags'] = ",".join(oldtags)
                     return render_template('updatePost.html', 
                                       title="Update a Post!",post=post, logged_in=logged_in)
-
-            info.updatePost(conn,pid, title, content, location, filename,time,date,session.get('username'),oldtags,newtags)
+            
+            tags_stripped = [tag.strip() for tag in newtags.split(",")]
+            info.updatePost(conn,pid, title, content, location, filename,time,date,session.get('username'),oldtags,tags_stripped)
         
             print("Post ({}) was updated successfully.".format(pid))
             return redirect(url_for('displayPost', pid=pid))
@@ -401,7 +403,7 @@ def join():
         passwd2 = request.form['password2']
         if passwd1 != passwd2:
             flash('passwords do not match')
-            return redirect( url_for('index'))
+            return redirect( url_for('login'))
         hashed = bcrypt.hashpw(passwd1.encode('utf-8'), bcrypt.gensalt())
         conn = info.getConn('c9')
         curs = conn.cursor(MySQLdb.cursors.DictCursor)
@@ -438,10 +440,24 @@ def loginAction():
         hashed = row['hashed']
         # strings always come out of the database as unicode objects
         if bcrypt.hashpw(passwd.encode('utf-8'),hashed.encode('utf-8')) == hashed:
-            flash('successfully logged in as '+username)
-            session['username'] = username
-            session['logged_in'] = True
-            return redirect( url_for('userPortal') )
+            if request.form.get('login-btn') == 'Login as User':
+                flash('successfully logged in as '+username)
+                session['username'] = username
+                session['logged_in'] = True
+                return redirect( url_for('userPortal') )
+            else:
+                curs.execute("""select isAdmin from accounts where username = %s""",
+                                [username])
+                isAdmin = curs.fetchone().get('isAdmin')
+                if isAdmin:
+                    flash('successfully logged in as ADMIN '+username)
+                    session['username'] = username
+                    session['logged_in'] = True
+                    session['admin'] = True
+                    return redirect( url_for('userPortal') )
+                else:
+                    flash('login as ADMIN incorrect. Try again or join')
+                    return redirect( url_for('login'))
         else:
             flash('login incorrect. Try again or join')
             return redirect( url_for('login'))
@@ -456,6 +472,7 @@ def logout():
             username = session['username']
             session.pop('username')
             session.pop('logged_in')
+            session.pop('admin','')
             flash('You are logged out')
             return redirect(url_for('home'))
         else:
@@ -515,6 +532,21 @@ def followAjax():
         else:
             print("Need to login")
             return jsonify( {'error': True, 'err': "need to login"} )
+            
+""" The route for deleting a tag (ONLY BY ADMIN)"""
+@app.route('/deleteTag/<tid>',methods=['POST'])
+def deleteTag(tid):
+    if request.method == "POST":
+        isAdmin = session.get('admin',False)
+        if not isAdmin:
+            flash("please log in as ADMIN")
+            print("please log in as ADMIN")
+            return redirect(url_for("tagsList"))
+        conn = info.getConn('c9')
+        info.deleteTag(conn,tid)
+        flash("tag {} successfully deleted".format(tid))
+        print("tag {} successfully deleted".format(tid))
+        return redirect(url_for("tagsList"))
 
 if __name__ == '__main__':
     app.debug = True

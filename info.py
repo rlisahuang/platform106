@@ -85,22 +85,19 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
     print(previous_pid)
     
     # curs.execute("""LOCK TABLES tags READ, tags WRITE""")
-    #inserting new tags into the tags table
+    # inserting new tags into the tags table and linking the tag and post in the tagged table
     for tag in tags:
-        tag = tag.strip()
-        curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", [tag])
-        tagExist = curs.fetchone().get("""EXISTS(SELECT 1 from tags where tag_name = '{}')""".format(tag))
-        if not tagExist and tag != "":
-            curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
+        if tag != "":
+            curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", [tag])
+            tagExist = curs.fetchone().get("""EXISTS(SELECT 1 from tags where tag_name = '{}')""".format(tag))
+            if not tagExist:
+                curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
+                conn.commit()
+            curs.execute("""select tid from tags where tag_name = %s""", [tag])
+            tag_id = curs.fetchone().get('tid')
+            curs.execute("""INSERT INTO tagged (tid, pid) VALUES (%s, %s)""", (tag_id, previous_pid))
             conn.commit()
     # curs.execute("""UNLOCK TABLES""")
-
-    #linking the tag and post in the tagged table
-    for tag in tags:
-        curs.execute("""select tid from tags where tag_name = %s""", [tag])
-        tag_id = curs.fetchone().get('tid')
-        curs.execute("""INSERT INTO tagged (tid, pid) VALUES (%s, %s)""", (tag_id, previous_pid))
-        conn.commit()
     
     return previous_pid
     
@@ -116,18 +113,18 @@ def updatePost(conn, pid, title, content, location, imagefile, event_time, event
         conn.commit()
     
     for tag in newtags:
-        tag = tag.strip()
-        curs.execute("""select tid from tags where tag_name = %s""", [tag])
-        tag_id = curs.fetchone()
-        if not tag_id and tag != "":
-            curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
+        if tag != "":
+            curs.execute("""select tid from tags where tag_name = %s""", [tag])
+            tag_id = curs.fetchone()
+            if not tag_id:
+                curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
+                conn.commit()
+                curs.execute("""select LAST_INSERT_ID()""")
+                tid = curs.fetchone()["LAST_INSERT_ID()"]
+            else:
+                tid = tag_id['tid']
+            curs.execute('''INSERT INTO tagged (tid,pid) values (%s,%s)''',(tid,pid))
             conn.commit()
-            curs.execute("""select LAST_INSERT_ID()""")
-            tid = curs.fetchone()["LAST_INSERT_ID()"]
-        else:
-            tid = tag_id['tid']
-        curs.execute('''INSERT INTO tagged (tid,pid) values (%s,%s)''',(tid,pid))
-        conn.commit()
         
     sql = '''UPDATE posts 
             SET title = %s, content = %s, location = %s, imagefile = %s, event_time = %s, 
@@ -148,6 +145,15 @@ def deletePost(conn,pid):
     # delete tags that are not used by any posts entirely from the database
     curs.execute("""delete from followed where tid not in (select tid from tagged)""")
     curs.execute("""delete from tags where tid not in (select tid from tagged)""")
+    conn.commit()
+    
+def deleteTag(conn,tid):
+    # only admins have the authorization to delete tags
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+
+    curs.execute("""delete from followed where tid = %s""",[tid])
+    curs.execute("""delete from tagged where tid = %s""",[tid])
+    curs.execute("""delete from tags where tid = %s""",[tid])
     conn.commit()
     
 def readOnePost(conn,pid):
@@ -422,5 +428,7 @@ if __name__ == '__main__':
     # time_obj = datetime.datetime.strptime(str(a),'%I:%M:%S').time()
     # print(type(time_obj))
     # print(str(time_obj)[:5])
-    n = readOnePost(conn,1)
-    print(n)
+    curs.execute("""select isAdmin from accounts where username = %s""",
+                                ['lisa'])
+    isAdmin = curs.fetchone().get('isAdmin')
+    print(isAdmin)

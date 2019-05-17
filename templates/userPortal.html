@@ -3,6 +3,9 @@
 {# replaces default content block #}
 {% block content %}
 <h3 style="color:blue;">Hello, {{ username }}!</h3> 
+{% if isAdmin %}
+<h3 style="color:red;">Logged in as Admin</h3>
+{% endif %}
 
 <h4> <a href=" {{url_for('updateProfile')}} ">Profile and Preferences</a> </h4>
 <h4 style="text-align:center;"> Manage my Starred Posts </h4>

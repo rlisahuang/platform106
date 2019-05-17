@@ -19,20 +19,24 @@
  
 <form id="joinform" style="display: none;" action="{{url_for('join')}}" method="post">
     <h2>Join</h2>
-    <p><label for="username_reg">Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
-    <p><label for="password_reg">Password: <input type="password" name="password1" required></label></p>
-    <p><label for="password2_reg">Password again: <input type="password" name="password2" required></label></p>
-    <p><button id="register-btn" type="submit">Register</button> 
-        <button type="" id="register2login">I have an account</button></p>
+    <p><label for="username_reg">Username: <input id="username_reg" type="text" name="username" required pattern="^\w+$"></label></p>
+    <p><label for="password_reg">Password: <input id="password_reg" type="password" name="password1" required></label></p>
+    <p><label for="password2_reg">Password again: <input id="password2_reg" type="password" name="password2" required></label></p>
+    <p>
+        <input type="submit" name="register-btn" class="login" id="register-btn" value="Register">
+        <input type="submit" name="register2login" class="login" id="register2login" value="I have an account">
+        </p>
 </form>
 
     
 <form id="loginform" style="display: block;" action="{{url_for('loginAction')}}" method="post">
     <h2>Login</h2>
-    <p><label for="username_login">Username: <input type="text" name="username" required pattern="^\w+$"></label></p>
-    <p><label for="password_login">Password: <input type="password" name="password" required></label></p>
-    <p><button type="submit" id="login-btn">Login</button> 
-        <button type="" id="login2register">I don't have an account</button></p>
+    <p><label for="username_login">Username: <input id="username_login" type="text" name="username" required pattern="^\w+$"></label></p>
+    <p><label for="password_login">Password: <input id="username_login" type="password" name="password" required></label></p>
+    <p><input type="submit" name="login-btn" class="login" id="login-btn" value="Login as User">
+        <input type="submit" name="login-btn" class="login" id="admin-btn" value="Login as Admin">
+        <input type="" name="login2register" class="login" id="login2register" value="I don't have an account">
+        </p>
 </form>
 
 
@@ -53,13 +57,15 @@ $("#joinform").on('submit', function (event) {
 });
 
 // event handler to switch from login mode to register
-$("#login2register").on('click',function(){
+$("#login2register").on('click',function(event){
+    event.preventDefault();
     $("#joinform").show();
     $("#loginform").hide();
 });
 
 // event handler to switch from register mode to login
-$("#register2login").on('click',function(){
+$("#register2login").on('click',function(event){
+    event.preventDefault();
     $("#loginform").show();
     $("#joinform").hide();
 });
