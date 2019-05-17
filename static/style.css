@@ -105,8 +105,10 @@ p {
 	padding-left: 30px;
 }
 
+
 .card {
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+  min-width: 300px;
   max-width: 300px;
   margin: 15px;
   display: inline-block;
@@ -117,6 +119,14 @@ p {
 cardContent {
   display: inline-block;
   vertical-align: middle;
+  min-height: 300px;
+  max-height: 300px;
+}
+
+.imagecontainer {
+  width: 300px; 
+  height: 300px; 
+  overflow: hidden;
 }
 
 img.cardimg {
@@ -124,6 +134,8 @@ img.cardimg {
   display: inline-block;
   vertical-align: middle;
 }
+
+
 
 .title {
   color: navy;

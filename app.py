@@ -39,6 +39,12 @@ def home():
     conn = info.getConn('c9')
     featuredEvents = info.getFeaturedEvents(conn)
     print (featuredEvents)
+    username = session.get('username')
+
+    for event in featuredEvents:
+        starred = info.isStarred(conn,event['pid'],username)
+        event["starred"] = "0" if starred is None else "1"
+    
     return render_template('home.html', title="Home", featuredEvents = featuredEvents, logged_in=session.get('logged_in',False))
     
 @app.route('/login/')
@@ -164,6 +170,8 @@ def createPost():
         event_date = request.form.get('post-eventdate','')
         tags = request.form.get('post-tags','')
         picture = request.files.get('post-picture',None)
+        print type(picture)
+        print picture
 
         newpost = {"title":title,"content":content,"location":location,
                 "event_time":event_time,"event_date":event_date, "tags":tags,'picture':picture}
@@ -181,6 +189,7 @@ def createPost():
             
             # picture is optional
             if picture is None:
+
                 return redirect(url_for('displayPost', pid=pid))
             else:
                 # if picture is provided, try uploading
@@ -399,6 +408,9 @@ def generalFeed():
             print(isStarred)
             post['starred'] = "0" if isStarred is None else "1"
             print(post)
+            isTomorrow = info.isEventDayTomorrow(conn, post['pid'])
+            post['tomorrow'] = "0" if isTomorrow is False else "1"
+            print(isTomorrow)
     
     return render_template('generalFeed.html',title = "General Feed", keyword=keyword,tags=tagHolder,posts=posts,logged_in=session.get('logged_in',False))    
 
@@ -493,7 +505,7 @@ def starAjax():
         print(usrPhone)
         usrEmail = info.getUserEmail(conn, usr)
         print(usrEmail)
-
+    
         # check if user has updated their profile information
         if usrPhone is None or usrPhone is "" or usrEmail is None or usrEmail is "":
             print("Need to update phone number or email in user profile!")
@@ -506,6 +518,7 @@ def starAjax():
                 print("post {} is starred by user {}".format(pid,usr))
                 return jsonify( {'error':False, 'pid': pid, 'starred': "1"} )
             else:
+                
                 info.unstarPost(conn,pid,usr)
                 print("post {} is unstarred by user {}".format(pid,usr))
                 return jsonify( {'error':False, 'pid': pid, 'starred': "0"} )
@@ -521,9 +534,14 @@ def followAjax():
         print(followed)
         usrPhone = info.getUserPhone(conn, usr)
         usrEmail = info.getUserEmail(conn, usr)
+    
 
         # check if user has updated their profile information
-        if usrPhone is not None or usrEmail is not None:
+        if usrPhone is None or usrPhone is "" or usrEmail is None or usrEmail is "":
+            print("Need to update phone number or email in user profile!")
+            return jsonify( {'error': True, 'err': "Need to update phone number or email in user profile!"} )
+        else:
+            
             if followed == "0":
                 print(tid)
                 print(usr)
@@ -534,9 +552,6 @@ def followAjax():
                 numFollows = info.unfollowTag(conn,tid,usr)['num_followers']
                 print("post {} is unfollowed by user {}".format(tid,usr))
                 return jsonify( {'error':False, 'tid': tid, 'followed': "0", 'numFollows': numFollows} )
-        else:
-            print("Need to update phone number or email in user profile!")
-            return jsonify( {'error': True, 'err': "Need to update phone number or email in user profile!"} )
 
 if __name__ == '__main__':
     app.debug = True

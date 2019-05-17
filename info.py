@@ -423,6 +423,20 @@ def getFeaturedEvents(conn):
         row2utf8(p)
         
     return featuredEvents
+
+def isEventDayTomorrow(conn, pid):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute("""select event_date from posts where pid = %s""", (pid,))
+    datetime_db = curs.fetchone()
+    
+    event_date = datetime_db['event_date']
+    tomorrow_date = datetime.date.today()+datetime.timedelta(days=1)
+    
+    if event_date == tomorrow_date:
+        return True
+    return False
+    
     
     
 if __name__ == '__main__':
@@ -448,3 +462,15 @@ if __name__ == '__main__':
     # print(str(time_obj)[:5])
     n = readOnePost(conn,1)
     print(n)
+    curs.execute("""select event_time,event_date from posts where pid = 16""")
+    datetime_db = curs.fetchone()
+    # print(type(datetime_db['event_time']))
+    # print(datetime_db['event_time'])
+    # print(type(datetime_db['event_date']))
+    print("event date is ")
+    print(datetime_db['event_date'])
+    print("today's date is ")
+    print(datetime.date.today())
+    print("tomorrow's date is ")
+    print(datetime.date.today()+datetime.timedelta(days=1))
+    print(datetime_db['event_date'] == datetime.date.today()+datetime.timedelta(days=1))

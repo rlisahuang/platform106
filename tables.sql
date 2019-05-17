@@ -12,7 +12,8 @@ create table accounts (
     username varchar(30) primary key,
     hashed varchar(60),
     isAdmin boolean,
-    phoneNum varchar(10)
+    phoneNum varchar(10),
+    email varchar(30)
 );
 
 create table posts (
