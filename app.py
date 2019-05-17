@@ -40,6 +40,12 @@ def home():
     conn = info.getConn('c9')
     featuredEvents = info.getFeaturedEvents(conn)
     print (featuredEvents)
+    username = session.get('username')
+
+    for event in featuredEvents:
+        starred = info.isStarred(conn,event['pid'],username)
+        event["starred"] = "0" if starred is None else "1"
+    
     return render_template('home.html', title="Home", featuredEvents = featuredEvents, logged_in=session.get('logged_in',False))
     
 @app.route('/login/')
@@ -112,16 +118,19 @@ def updateProfile():
     conn = info.getConn('c9')
     usr=session.get('username')
     oldNum = info.getUserPhone(conn,usr)
+    oldEmail = info.getUserEmail(conn,usr)
     
     if request.method == "GET":
         # set up the page and pre-fill the form using info from database
-        oldNum = oldNum['phoneNum']
         num = "" if oldNum is None else oldNum
-        return render_template('updateProfile.html', num=num,logged_in=session.get('logged_in',False))
+        email = "" if oldEmail is None else oldEmail
+        return render_template('updateProfile.html', num=num, email=email, logged_in=session.get('logged_in',False))
         
     else:
         # the update function, grab info filled in by the user
         newNum = request.form.get("phoneNum")
+        newEmail = request.form.get("email")
+
         if len(newNum) != 10: 
             flash("Please provide a valid US phone number with exactly 10 digits.")
             return redirect(url_for('updateProfile'))
@@ -129,6 +138,8 @@ def updateProfile():
             numericForm = int(newNum)
             info.updateUserPhone(conn, usr, newNum)
             print("Phone number of ({}) was updated successfully.".format(usr))
+            info.updateUserEmail(conn, usr, newEmail)
+            print("Email of ({}) was updated successfully.".format(usr))
             return redirect(url_for('updateProfile'))
         except Exception as err:
             flash("Invalid phone number:{why}".format(why=err))
@@ -157,6 +168,8 @@ def createPost():
         event_date = request.form.get('post-eventdate','')
         tags = request.form.get('post-tags','')
         picture = request.files.get('post-picture',None)
+        print type(picture)
+        print picture
 
         newpost = {"title":title,"content":content,"location":location,
                 "event_time":event_time,"event_date":event_date, "tags":tags,'picture':picture}
@@ -175,6 +188,7 @@ def createPost():
             
             # picture is optional
             if picture is None:
+
                 return redirect(url_for('displayPost', pid=pid))
             else:
                 # if picture is provided, try uploading
@@ -242,6 +256,7 @@ def displayPost(pid):
         starred = info.isStarred(conn,pid,username)
         isAuthor = info.isAuthor(conn,pid,username)
         postInfo["starred"] = "0" if starred is None else "1"
+        authorEmail = info.getAuthorEmail(conn, postInfo['author'])
     
         return render_template('post.html',isAdmin=session.get('admin',False),isAuthor=isAuthor,post=postInfo,logged_in=logged_in)
     
@@ -426,6 +441,9 @@ def generalFeed():
             print(isStarred)
             post['starred'] = "0" if isStarred is None else "1"
             print(post)
+            isTomorrow = info.isEventDayTomorrow(conn, post['pid'])
+            post['tomorrow'] = "0" if isTomorrow is False else "1"
+            print(isTomorrow)
     
     return render_template('generalFeed.html',title = "General Feed", keyword=keyword,tags=tagHolder,posts=posts,logged_in=session.get('logged_in',False))    
 
@@ -531,9 +549,16 @@ def starAjax():
         usr = session.get('username')
         pid = request.form.get('pid')
         starred = request.form.get('starred')
-
-        # check if user is logged in
-        if usr is not None:
+        usrPhone = info.getUserPhone(conn, usr)
+        print(usrPhone)
+        usrEmail = info.getUserEmail(conn, usr)
+        print(usrEmail)
+    
+        # check if user has updated their profile information
+        if usrPhone is None or usrPhone is "" or usrEmail is None or usrEmail is "":
+            print("Need to update phone number or email in user profile!")
+            return jsonify( {'error': True, 'err': "Need to update phone number or email in user profile!"} )
+        else:
             print(starred)
             print(type(starred))
             if starred == "0":
@@ -541,12 +566,10 @@ def starAjax():
                 print("post {} is starred by user {}".format(pid,usr))
                 return jsonify( {'error':False, 'pid': pid, 'starred': "1"} )
             else:
+                
                 info.unstarPost(conn,pid,usr)
                 print("post {} is unstarred by user {}".format(pid,usr))
                 return jsonify( {'error':False, 'pid': pid, 'starred': "0"} )
-        else:
-            print("Need to login")
-            return jsonify( {'error': True, 'err': "need to login"} )
 
 """ The route for follow/unfollow tag with ajax """     
 @app.route('/followAjax',methods=['POST'])      
@@ -557,9 +580,15 @@ def followAjax():
         tid = request.form.get('tid')
         followed = request.form.get('followed')
         print(followed)
+        usrPhone = info.getUserPhone(conn, usr)
+        usrEmail = info.getUserEmail(conn, usr)
+    
 
-        # check if user is logged in
-        if usr is not None:
+        # check if user has updated their profile information
+        if usrPhone is None or usrPhone is "" or usrEmail is None or usrEmail is "":
+            print("Need to update phone number or email in user profile!")
+            return jsonify( {'error': True, 'err': "Need to update phone number or email in user profile!"} )
+        else:
             if followed == "0":
                 print(tid)
                 print(usr)
@@ -570,9 +599,7 @@ def followAjax():
                 numFollows = info.unfollowTag(conn,tid,usr)['num_followers']
                 print("post {} is unfollowed by user {}".format(tid,usr))
                 return jsonify( {'error':False, 'tid': tid, 'followed': "0", 'numFollows': numFollows} )
-        else:
-            print("Need to login")
-            return jsonify( {'error': True, 'err': "need to login"} )
+     
             
 """ The route for deleting a tag (ONLY BY ADMIN)"""
 @app.route('/deleteTag/<tid>',methods=['POST'])
@@ -588,6 +615,7 @@ def deleteTag(tid):
         flash("tag {} successfully deleted".format(tid))
         print("tag {} successfully deleted".format(tid))
         return redirect(url_for("tagsList"))
+
 
 if __name__ == '__main__':
     app.debug = True

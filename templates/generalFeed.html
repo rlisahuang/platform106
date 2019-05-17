@@ -12,46 +12,88 @@
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>
     <br>
-    <table id="posts-list">
-        <tr>
-            <th>Title</th>
-            <th>Location</th>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Tags</th>
-            <th>Author</th>
-            {% if logged_in %}
-            <th>Star Status</th>
+    
+    {% if posts %}
+    <div id="posts-list">
+    {% for post in posts %}
+    <div id="post-item" class="card">
+        <div class="imagecontainer">
+            <img src="{{ url_for('pic',pid=post.pid) }}" alt="" width="50%" class="cardimg" >
+        </div>
+        <div id="cardContent">
+            <h1 class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></h1>
+            
+            <p class="location"><b>Location: </b>{{ post.location }}</p>
+            {% if post.tomorrow == "1" %}
+                <p class="event_date"><font color = "red"><b>Date: </b>{{ post.event_date }}</font></p>
+            {% else %}
+                <p class="event_date"><b>Date: </b>{{ post.event_date }}</p>
             {% endif %}
-        </tr>
-        {% if posts %}
-        {% for post in posts %}
-        <tr data-pid={{ post.pid }}>
-            <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td> 
-            <td class="location">{{ post.location }}</td>
-            <td class="event_date">{{ post.event_date }}</td>
-            <td class="event_time">{{ post.event_time }}</td>
-            <td class="tags">
+            
+            <p class="event_time"><b>Time: </b>{{ post.event_time }}</p>
+            <p class="tags"><b>Tags: </b>
                 {% for tag in post.tags %}
                 <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> 
                 {% endfor %}
-            </td>
-            <td class="post_author">{{ post.author }}</td>
-            {% if logged_in %}
-            <td>
+            </p>
+            <p class="post_author"><b>Author: </b>{{ post.author }}</p>
+            <p>
+                {% if logged_in %}
                 <form method="post" action="{{ url_for('starAjax') }}">
                     <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ post.pid }}"></label>
                     <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ post.starred }}"></label>
-                    <label class = "star-event">
+                    <label class ="star-event">
                         <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred == '1' else 'Star the Event'}}">
                     </label>
                 </form>
-            </td>
-            {% endif %}
-        </tr>
-        {% endfor %}
-        {% endif %}
-    </table>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!--<table id="posts-list">-->
+    <!--    <tr>-->
+    <!--        <th>Title</th>-->
+    <!--        <th>Location</th>-->
+    <!--        <th>Date</th>-->
+    <!--        <th>Time</th>-->
+    <!--        <th>Tags</th>-->
+    <!--        <th>Author</th>-->
+    <!--        {% if logged_in %}-->
+    <!--        <th>Star Status</th>-->
+    <!--        {% endif %}-->
+    <!--    </tr>-->
+    <!--    {% if posts %}-->
+    <!--    {% for post in posts %}-->
+    <!--    <tr data-pid={{ post.pid }}>-->
+    <!--        <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td> -->
+    <!--        <td class="location">{{ post.location }}</td>-->
+    <!--        <td class="event_date">{{ post.event_date }}</td>-->
+    <!--        <td class="event_time">{{ post.event_time }}</td>-->
+    <!--        <td class="tags">-->
+    <!--            {% for tag in post.tags %}-->
+    <!--            <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> -->
+    <!--            {% endfor %}-->
+    <!--        </td>-->
+    <!--        <td class="post_author">{{ post.author }}</td>-->
+    <!--        {% if logged_in %}-->
+    <!--        <td>-->
+    <!--            <form method="post" action="{{ url_for('starAjax') }}">-->
+    <!--                <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ post.pid }}"></label>-->
+    <!--                <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ post.starred }}"></label>-->
+    <!--                <label class = "star-event">-->
+    <!--                    <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred == '1' else 'Star the Event'}}">-->
+    <!--                </label>-->
+    <!--            </form>-->
+    <!--        </td>-->
+    <!--        {% endif %}-->
+    <!--    </tr>-->
+    <!--    {% endfor %}-->
+    <!--    {% endif %}-->
+    <!--</table>-->
 
 {% endblock %}
 

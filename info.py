@@ -371,7 +371,7 @@ def getUserPhone(conn,username):
     curs.execute('''select phoneNum from accounts where username = %s''',[username])
     phoneNum = curs.fetchone()
     
-    return phoneNum
+    return phoneNum['phoneNum']
     
 def updateUserPhone(conn,username,newNum):
     ''' This function updates the user's phone number in the accounts table.
@@ -380,6 +380,36 @@ def updateUserPhone(conn,username,newNum):
     
     curs.execute('''update accounts set phoneNum = %s where username = %s''',(newNum,username))
     conn.commit()
+    
+def getUserEmail(conn,username):
+    ''' This function returns the email of the user from the accounts 
+        table.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select email from accounts where username = %s''',[username])
+    email = curs.fetchone()
+    
+    return email['email']
+    
+def updateUserEmail(conn,username,newEmail):
+    ''' This function updates the user's email address in the accounts table.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''update accounts set email = %s where username = %s''',(newEmail,username))
+    conn.commit()
+    
+def getAuthorEmail(conn, author):
+    ''' This function returns the email of the author of a post from the accounts 
+        table.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute('''select email from accounts where username = %s''',[author])
+    email = curs.fetchone()
+    
+    return email['email']
     
 def getTotalStarsByPost(conn,pid):
     ''' This function gets the total number of stars that each post has. 
@@ -420,6 +450,20 @@ def getFeaturedEvents(conn):
         row2utf8(p)
         
     return featuredEvents
+
+def isEventDayTomorrow(conn, pid):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute("""select event_date from posts where pid = %s""", (pid,))
+    datetime_db = curs.fetchone()
+    
+    event_date = datetime_db['event_date']
+    tomorrow_date = datetime.date.today()+datetime.timedelta(days=1)
+    
+    if event_date == tomorrow_date:
+        return True
+    return False
+    
     
     
 if __name__ == '__main__':
@@ -443,3 +487,18 @@ if __name__ == '__main__':
     # time_obj = datetime.datetime.strptime(str(a),'%I:%M:%S').time()
     # print(type(time_obj))
     # print(str(time_obj)[:5])
+
+    n = readOnePost(conn,1)
+    print(n)
+    curs.execute("""select event_time,event_date from posts where pid = 16""")
+    datetime_db = curs.fetchone()
+    # print(type(datetime_db['event_time']))
+    # print(datetime_db['event_time'])
+    # print(type(datetime_db['event_date']))
+    print("event date is ")
+    print(datetime_db['event_date'])
+    print("today's date is ")
+    print(datetime.date.today())
+    print("tomorrow's date is ")
+    print(datetime.date.today()+datetime.timedelta(days=1))
+    print(datetime_db['event_date'] == datetime.date.today()+datetime.timedelta(days=1))

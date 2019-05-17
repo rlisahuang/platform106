@@ -29,15 +29,18 @@
 {# double check if picture exists, if not then display an empty string #}
 <p><img src="{{ url_for('pic',pid=post.pid) }}" alt="" width="50%" ></p>
 
-<p>Description: {{ post.content }}</p>
-<p>Location: {{ post.location }}</p>
-<p>Event date: {{ post.event_date }}</p>
-<p>Event time: {{ post.event_time }}</p>
-<p class = "tags">Tags:
+<p><b>Description:</b> {{ post.content }}</p>
+<p><b>Location:</b> {{ post.location }}</p>
+<p><b>Event date:</b> {{ post.event_date }}</p>
+<p><b>Event time:</b> {{ post.event_time }}</p>
+<p class = "tags"><b>Tags:</b>
     {% for tag in post.tags %}
     <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> 
     {% endfor %}
 </p>
+{% if logged_in %}
+<p><b>Contact Author: </b><a href="mailto:{{authorEmail}}?subject=Question Regarding {{post.title}}">{{authorEmail}}</a></p>
+{% endif %}
 
 {% endif %}
 
@@ -45,40 +48,9 @@
 {% endblock %}
 
 {% block jquery_scripts %}
+<script src="{{url_for('static',filename='starEvent.js')}}"></script>
 <script>
     var star_URL = "{{ url_for('starAjax') }}";
     
-    $("label.star-event").on("click", function (event) {
-        event.preventDefault();
-        var starred = $(event.target).closest("form").find("input[name='starred']").val();
-        console.log(starred);
-        var pid = $(event.target).closest("form").find("input[name='pid']").val();
-        console.log(pid);
-        var button = $(this).find("input[name=star-event]");
-        sendStar(pid,starred,button);
-    });
-    
-    function sendStar(pid,starred,button) {
-        console.log("Sending "+pid +" and " + starred +" to the back end");
-        $.post(star_URL,{'error':false, 'pid': pid, 'starred': starred},
-        function(data,status){
-            updateStar(data,button);
-        },'json');
-    }
-    
-    function updateStar(obj,button) {
-        console.log(obj);
-        if(obj.error) {
-            alert(obj.err);
-        } else {
-            console.log("changing star status to be " + obj.starred)
-            if (obj.starred == "1") {
-                button.val('Starred -- Click to unstar');
-            } else {
-                button.val('Star the Event');
-            }
-            button.closest("form").find("input[name=starred]").val(obj.starred);
-        }
-    }
 </script>
 {% endblock %}
