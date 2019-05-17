@@ -80,18 +80,20 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
     conn.commit()
 
     curs.execute("""select LAST_INSERT_ID()""")
-    #alternative version -- curs.execute("""select max(LAST_INSERT_ID()) from posts""")
     previous_pid_dict = curs.fetchone()
     previous_pid = previous_pid_dict["LAST_INSERT_ID()"]
     print(previous_pid)
     
+    # curs.execute("""LOCK TABLES tags READ, tags WRITE""")
     #inserting new tags into the tags table
     for tag in tags:
+        tag = tag.strip()
         curs.execute("""SELECT EXISTS(SELECT 1 from tags where tag_name = %s)""", [tag])
         tagExist = curs.fetchone().get("""EXISTS(SELECT 1 from tags where tag_name = '{}')""".format(tag))
-        if not tagExist:
+        if not tagExist and tag != "":
             curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
             conn.commit()
+    # curs.execute("""UNLOCK TABLES""")
 
     #linking the tag and post in the tagged table
     for tag in tags:
@@ -103,15 +105,7 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
     return previous_pid
     
 def updatePost(conn, pid, title, content, location, imagefile, event_time, event_date,author,oldtags,newtags):
-    '''
-    <IN PROGRESS>
-    Function that updates an existing post given information read from the front
-    end.
-    
-    Potential Problem:
-        The feature is not implemented in the front end and the current 
-    implementation has not been tested yet. Changes might occur in the future.
-    '''
+
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     for tag in oldtags:
         curs.execute('''DELETE t1
@@ -122,9 +116,10 @@ def updatePost(conn, pid, title, content, location, imagefile, event_time, event
         conn.commit()
     
     for tag in newtags:
+        tag = tag.strip()
         curs.execute("""select tid from tags where tag_name = %s""", [tag])
         tag_id = curs.fetchone()
-        if not tag_id:
+        if not tag_id and tag != "":
             curs.execute("""INSERT INTO tags (tag_name) VALUES (%s)""", [tag]) 
             conn.commit()
             curs.execute("""select LAST_INSERT_ID()""")
@@ -144,9 +139,15 @@ def updatePost(conn, pid, title, content, location, imagefile, event_time, event
     
 def deletePost(conn,pid):
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
+
     curs.execute("""delete from starred where pid = %s""",[pid])
     curs.execute("""delete from tagged where pid = %s""",[pid])
     curs.execute("""DELETE FROM posts WHERE pid = %s""", [pid])
+    conn.commit()
+    
+    # delete tags that are not used by any posts entirely from the database
+    curs.execute("""delete from followed where tid not in (select tid from tagged)""")
+    curs.execute("""delete from tags where tid not in (select tid from tagged)""")
     conn.commit()
     
 def readOnePost(conn,pid):
@@ -302,22 +303,27 @@ def displayFollowedTags(conn,username):
         and the info associated with them. 
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
-    curs.execute('''select * from followed 
-                    inner join tags using (tid) 
-                    where followed.username = %s''',[username])
+    curs.execute('''select t1.tid,username,tag_name,num_followers,num_posts from 
+                        followed t1 
+                            inner join 
+                        tags t2 
+                            on t1.tid = t2.tid 
+                            inner join 
+                        (select tid,count(*) as num_posts from tagged group by tid) t3 
+                            on t2.tid = t3.tid
+                        where username = %s''',[username])
     return curs.fetchall()
 
 def getTags(conn, tag_name=''):
-    ''' This function returns a dictionary of all the tags in the tags table.
+    ''' This function returns a dictionary of all the tags in the tags table including num_posts.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
-    
-    if tag_name != '':
-        curs.execute('''select * from tags where tags.tag_name like %s''', ["%"+tag_name+"%"])
-        allTags = curs.fetchall()
-    else:
-        curs.execute('''select * from tags''')
-        allTags = curs.fetchall()
+    curs.execute('''select t1.tid,tag_name,num_followers,num_posts from tags t1 
+                    inner join 
+                    (select tid,count(*) as num_posts from tagged group by tid) t2 
+                    on t1.tid = t2.tid 
+                    where tag_name like %s''',["%"+tag_name+"%"])
+    allTags = curs.fetchall()
     
     return allTags
 
@@ -359,20 +365,20 @@ def getTotalStarsByPost(conn,pid):
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
-    curs.execute('''select count(*) from starred group by pid having pid = %s''',[pid])
+    curs.execute('''select pid, count(*) as stars from starred where pid = %s''',[pid])
     numStars = curs.fetchone()
     
-    return numStars # {'count(*)': 1}
+    return numStars # {'pid': pid, 'stars': num_stars}
     
 def getTotalStarsByUser(conn,username):
     ''' This function gets the total number of posts that each user has starred.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
-    curs.execute('''select count(*) from starred group by username having username = %s''',[username])
+    curs.execute('''select username, count(*) as stars from starred where username = %s''',[username])
     numStars = curs.fetchone()
     
-    return numStars # {'count(*)': 1}
+    return numStars # {'username': usr, 'stars': num_stars}
     
 def getFeaturedEvents(conn):
     ''' This function gets the three posts with the highest number of 'stars' 

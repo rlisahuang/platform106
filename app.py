@@ -45,29 +45,25 @@ def home():
 def login():
     return render_template('login.html', title = "Login", logged_in=session.get('logged_in',False))
     
-@app.route('/tagsList')
-def tagsList():
+@app.route('/tagsList/',defaults={'tag':''})
+@app.route('/tagsList/<tag>/')
+def tagsList(tag):
     logged_in = session.get('logged_in', False)
     if not logged_in: # the link is only available after the user is logged in
         flash("Please log in!")
         return redirect(url_for("login"))
     
     conn = info.getConn('c9')
-    tag = session.pop('tags','')
-    tags = info.getTags(conn, tag)
+    tags = info.getTags(conn, tag) # return all tags that contain the keyword `tag`
 
     # update each tag dictionary with info indicating 1) whether it is followed by
     # this user, 2) how many posts that use this tag and 3) how many followers
     # in total
     for tag in tags:
         followed = info.isFollowed(conn, tag['tid'], session.get('username'))
-        if followed == None:
-            followed = "0"
-        else:
-            followed = "1"
+        followed = "0" if followed is None else "1"
         tag['followed'] = followed
-        tag['num_posts'] = info.getNumPostsThatUseTag(conn, tag['tid'])
-    
+
     return render_template('tagsList.html', title = "Tags List", tags=tags, logged_in=logged_in)
  
 # url for tags search FORM (in tagsList page)        
@@ -75,10 +71,8 @@ def tagsList():
 def tagsSearch():
     if request.method == 'POST':
         tag = request.form.get('searchtags','')
-        # save the tags in session to be displayed in generalFeed
-        session['tags'] = tag
+        return redirect(url_for("tagsList",tag=tag))
         
-        return redirect(url_for("tagsList"))
     return redirect(request.referrer)
     
 @app.route('/userPortal/')
@@ -93,20 +87,14 @@ def userPortal():
     stars = info.displayStarredEvents(conn,usr)
     posts = info.displayPostsByUser(conn,usr)
     follows = info.displayFollowedTags(conn,usr)
-    for follow in follows:
-        follow['num_posts'] = info.getNumPostsThatUseTag(conn, follow['tid'])
-    
+  
     # update each star with explicit string indicating whether the post is starred by the user
     for star in stars:
-        isStarred = info.isStarred(conn,star['pid'],usr)
-        starred = "0" if isStarred is None else "1"
-        star['starred'] = starred
+        star['starred'] = "1"
     
     # update each tag with explicit string indicating whether the tag is followed by the user        
     for follow in follows:
-        isFollowed = info.isFollowed(conn, follow['tid'], usr)
-        followed = "0" if isFollowed is None else "1"
-        follow['followed'] = followed
+        follow['followed'] = "1"
 
     return render_template('userPortal.html', title = "User Portal", stars=stars,
                         posts=posts, follows=follows, username=usr,logged_in=logged_in)
@@ -173,7 +161,8 @@ def createPost():
         
         else: 
             # first insert the post without picture, because we need the pid
-            pid = info.insertPost(conn, title, content, location, event_time, event_date, tags.split(','), session.get('username'))
+            tags_stripped = [tag.strip() for tag in tags.split(",")]
+            pid = info.insertPost(conn, title, content, location, event_time, event_date, tags_stripped, session.get('username'))
             
             # picture is optional
             if picture is None:

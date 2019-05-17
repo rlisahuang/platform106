@@ -45,41 +45,8 @@
 {% endblock %}
 
 {% block jquery_scripts %}
+<script src="{{url_for('static',filename='followTag.js')}}"></script>
 <script>
-    var URL = "{{ url_for('followAjax') }}";
-    
-    $("label.follow-tag").on("click", function (event) {
-        event.preventDefault();
-        var followed = $(event.target).closest("form").find("input[name='followed']").val();
-        console.log("follow: " + followed);
-        var tid = $(event.target).closest("form").find("input[name='tid']").val();
-        var button = $(this).find("input[name=follow-tag]");
-        sendFollow(tid,followed,button);
-    });
-    
-    function sendFollow(tid,followed,button) {
-        console.log("Sending "+tid +" and " + followed +" to the back end");
-        $.post(URL,{'error':false, 'tid': tid, 'followed': followed},
-        function(data,status){
-            updateFollow(data,button);
-        },'json');
-    }
-    
-    function updateFollow(obj,button) {
-        console.log(obj);
-        if(obj.error) {
-            // $("#errors").empty().html('Error: '+obj.err);
-            alert(obj.err);
-        } else {
-            console.log("changing follow status to be " + obj.followed)
-            if (obj.followed == "1") {
-                button.val('Followed -- Click to unfollow');
-            } else {
-                button.val('Follow the Tag');
-            }
-            button.closest("form").find("input[name=followed]").val(obj.followed);
-            button.closest("[data-tid]").find(".num_followers").text(obj.numFollows);
-        }
-    }
-</script>
+var follow_URL = "{{ url_for('followAjax') }}";
+ </script>
 {% endblock %}

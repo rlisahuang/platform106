@@ -99,82 +99,11 @@
 {% endblock %}
 
 {% block jquery_scripts %}
+<script src="{{url_for('static',filename='followTag.js')}}"></script>
+<script src="{{url_for('static',filename='starEvent.js')}}"></script>
+
 <script>
     var star_URL = "{{ url_for('starAjax') }}";
-    
-    $("label.star-event").on("click", function (event) {
-        event.preventDefault();
-        var starred = $(event.target).closest("form").find("input[name='starred']").val();
-        var pid = $(event.target).closest("form").find("input[name='pid']").val();
-        var button = $(this).find("input[name=star-event]");
-        sendStar(pid,starred,button);
-    });
-    
-    function sendStar(pid,starred,button) {
-        console.log("Sending "+pid +" and " + starred +" to the back end");
-        $.post(star_URL,{'error':false, 'pid': pid, 'starred': starred},
-        function(data,status){
-            updateStar(data,button);
-        },'json');
-    }
-    
-    function updateStar(obj,button) {
-        console.log(obj);
-        if(obj.error) {
-            alert(obj.err);
-        } else {
-            console.log("changing star status to be " + obj.starred)
-            if (obj.starred == "1") {
-                button.val('Starred -- Click to unstar');
-            } else {
-                button.val('Star the Event');
-            }
-            button.closest("form").find("input[name=starred]").val(obj.starred);
-        }
-    }
-
-    var URL = "{{ url_for('followAjax') }}";
-    
-    $("label.follow-tag").on("click", function (event) {
-        event.preventDefault();
-        var followed = $(event.target).closest("form").find("input[name='followed']").val();
-       // var followed = $(event.target).closest("form").find("input[name='followed']").is(":checked");
-        console.log("follow: " + followed);
-        // if(!followed) {
-        // if (event.target != this) return;
-            // followed = true;
-        // } else {
-            // followed = false;
-        // }
-        var tid = $(event.target).closest("form").find("input[name='tid']").val();
-        var button = $(this).find("input[name=follow-tag]");
-        sendFollow(tid,followed,button);
-    });
-    
-    function sendFollow(tid,followed,button) {
-        console.log("Sending "+tid +" and " + followed +" to the back end");
-        $.post(URL,{'error':false, 'tid': tid, 'followed': followed},
-        function(data,status){
-            updateFollow(data,button);
-        },'json');
-    }
-    
-    function updateFollow(obj,button) {
-        console.log(obj);
-        if(obj.error) {
-            // $("#errors").empty().html('Error: '+obj.err);
-            alert(obj.err);
-        } else {
-            console.log("changing follow status to be " + obj.followed)
-            if (obj.followed == "1") {
-                button.val('Followed -- Click to unfollow');
-            } else {
-                //button.closest("form").find("input[name=followed]").prop(checked, false);
-                button.val('Follow the Tag');
-            }
-            button.closest("form").find("input[name=followed]").val(obj.followed);
-            button.closest("[data-tid]").find(".num_followers").text(obj.numFollows);
-        }
-    }
+    var follow_URL = "{{ url_for('followAjax') }}";
 </script>
 {% endblock %}
