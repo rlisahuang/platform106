@@ -66,8 +66,6 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
         1) The current implementation of the function assumes that titles are not 
     unique and does not prevent the user from creating a post with exactly the 
     same title and content as any existing post.
-        2) the empty tag is considered as valid and could be inserted into the 
-    database. Not harmful, but needs to be fixed.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     val = (title, content, location, 0, None, event_time, event_date,username)
@@ -84,7 +82,7 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
     previous_pid = previous_pid_dict["LAST_INSERT_ID()"]
     print(previous_pid)
     
-    # curs.execute("""LOCK TABLES tags READ, tags WRITE""")
+    curs.execute("""LOCK TABLES tags WRITE, tagged WRITE""")
     # inserting new tags into the tags table and linking the tag and post in the tagged table
     for tag in tags:
         if tag != "":
@@ -97,13 +95,18 @@ def insertPost(conn, title, content, location, event_time, event_date, tags, use
             tag_id = curs.fetchone().get('tid')
             curs.execute("""INSERT INTO tagged (tid, pid) VALUES (%s, %s)""", (tag_id, previous_pid))
             conn.commit()
-    # curs.execute("""UNLOCK TABLES""")
+    curs.execute("""UNLOCK TABLES""")
     
     return previous_pid
     
 def updatePost(conn, pid, title, content, location, imagefile, event_time, event_date,author,oldtags,newtags):
-
+    '''
+    Function that updates an existing post in the database, release existing post-tag relationships
+    if any old tags are removed and establish new post-tag relationships if given any new tags.
+    '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute("""LOCK TABLES tags WRITE, tagged WRITE""")
     for tag in oldtags:
         curs.execute('''DELETE t1
                         FROM tagged t1
@@ -125,6 +128,7 @@ def updatePost(conn, pid, title, content, location, imagefile, event_time, event
                 tid = tag_id['tid']
             curs.execute('''INSERT INTO tagged (tid,pid) values (%s,%s)''',(tid,pid))
             conn.commit()
+    curs.execute("""UNLOCK TABLES""")
         
     sql = '''UPDATE posts 
             SET title = %s, content = %s, location = %s, imagefile = %s, event_time = %s, 
@@ -181,8 +185,8 @@ def searchPosts(conn,keyword='',tags=''):
     Potential Problems:
         The current implementation only allows for searching by keyword (basicSearch)
     or keyword+tags (advancedSearch). Potentially, we would also want to allow 
-    users to search posts according to event date, location, etc. Changes to this
-    function will occur in the beta version.
+    users to search posts according to event date, location, etc. We would have loved this
+    to occur in the beta version, but we didn't have time :(
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     if tags != '': # search with tags
@@ -306,7 +310,7 @@ def unfollowTag(conn,tid,username):
 
 def displayFollowedTags(conn,username):
     ''' This function returns a dictionary of all the tags followed by the user
-        and the info associated with them. 
+        and the info associated with them, including number of followers and number of posts.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     curs.execute('''select t1.tid,username,tag_name,num_followers,num_posts from 
@@ -347,6 +351,17 @@ def getNumPostsThatUseTag(conn, tid):
     else:
         return 0
     
+def getSubscriberPhoneNums(conn,pid):
+    ''' This function returns the phone numbers of all users who starred a certain event.
+    '''
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    curs.execute("""select accounts.username, phoneNum from accounts 
+                inner join starred on accounts.username = starred.username 
+                where pid = %s""",[pid])
+
+    return curs.fetchall()
+
 def getUserPhone(conn,username):
     ''' This function returns the phone number of the user from the accounts 
         table.
@@ -428,7 +443,3 @@ if __name__ == '__main__':
     # time_obj = datetime.datetime.strptime(str(a),'%I:%M:%S').time()
     # print(type(time_obj))
     # print(str(time_obj)[:5])
-    curs.execute("""select isAdmin from accounts where username = %s""",
-                                ['lisa'])
-    isAdmin = curs.fetchone().get('isAdmin')
-    print(isAdmin)

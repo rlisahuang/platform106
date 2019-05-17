@@ -11,6 +11,7 @@ The main file of the app.
 from flask import (Flask, render_template, make_response, url_for, request,
                    redirect, flash, session, send_from_directory,jsonify)
 from werkzeug.utils import secure_filename
+from twilio.rest import Client
 
 
 app = Flask(__name__)
@@ -121,9 +122,17 @@ def updateProfile():
     else:
         # the update function, grab info filled in by the user
         newNum = request.form.get("phoneNum")
-        info.updateUserPhone(conn, usr, newNum)
-        print("Phone number of ({}) was updated successfully.".format(usr))
-        return redirect(url_for('updateProfile'))
+        if len(newNum) != 10: 
+            flash("Please provide a valid US phone number with exactly 10 digits.")
+            return redirect(url_for('updateProfile'))
+        try:
+            numericForm = int(newNum)
+            info.updateUserPhone(conn, usr, newNum)
+            print("Phone number of ({}) was updated successfully.".format(usr))
+            return redirect(url_for('updateProfile'))
+        except Exception as err:
+            flash("Invalid phone number:{why}".format(why=err))
+            return redirect(url_for('updateProfile'))
 
 
 @app.route('/createPost', methods=['GET','POST'])
@@ -272,6 +281,15 @@ def updatePost(pid):
         return render_template('updatePost.html', post=post,logged_in=session.get('logged_in',False))
     
     else:
+        curs = conn.cursor(MySQLdb.cursors.DictCursor)
+        curs.execute("""select * from twilio_info""")
+        twilio_info = curs.fetchone()
+        account_sid = twilio_info['account_sid']
+        auth_token = twilio_info['auth_token']
+        client = Client(account_sid, auth_token) # text msg client
+        
+        starredBy = info.getSubscriberPhoneNums(conn,pid)
+        
         # the delete function, flash message and redirect to home page
         if request.form.get('submit') == 'delete':
             filename = post['imagefile']
@@ -285,6 +303,17 @@ def updatePost(pid):
             else:
                 flash("Post ({}) was deleted successfully.".format(pid))
                 print("Post ({}) was deleted successfully.".format(pid))
+            
+            for user in starredBy:
+                phoneNum = user['phoneNum']
+                if phoneNum:
+                    try:
+                        message = client.messages.create(
+                                    to="+1"+phoneNum, 
+                                    from_="+18572675446",
+                                    body="The event you starred: {event}, has been deleted.".format(event=post['title']))
+                    except Exception as err:
+                        print("SMS sent failed to {phoneNum}: {why}".format(phoneNum=phoneNum,why=err))
             return redirect(url_for('userPortal'))
        
         # the update function, grab info filled in by the user
@@ -336,6 +365,18 @@ def updatePost(pid):
             info.updatePost(conn,pid, title, content, location, filename,time,date,session.get('username'),oldtags,tags_stripped)
         
             print("Post ({}) was updated successfully.".format(pid))
+            
+            for user in starredBy:
+                phoneNum = user['phoneNum']
+                if phoneNum:
+                    try:
+                        message = client.messages.create(
+                                    to="+1"+phoneNum, 
+                                    from_="+18572675446",
+                                    body="The event you starred: {event}, has been updated.".format(event=post['title']))
+                    except Exception as err:
+                        print("SMS sent failed to {phoneNum}: {why}".format(phoneNum=phoneNum,why=err))
+                        
             return redirect(url_for('displayPost', pid=pid))
             
                                   
