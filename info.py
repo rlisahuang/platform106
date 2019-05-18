@@ -16,7 +16,7 @@ import auth
 import operator
 
 def getConn(db):
-    # conn = auth.mysqlConnectCNF(db='c9')
+    #conn = auth.mysqlConnectCNF(db='c9')
     conn = MySQLdb.connect(host='localhost',
                            user='ubuntu',
                            passwd='',
