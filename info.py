@@ -453,6 +453,7 @@ def getFeaturedEvents(conn):
     return featuredEvents
 
 def isEventDayTomorrow(conn, pid):
+    ''' Checks whether the event date of the given event is tomorrow '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
     curs.execute("""select event_date from posts where pid = %s""", (pid,))
@@ -466,6 +467,8 @@ def isEventDayTomorrow(conn, pid):
     return False
     
 def sortPosts(conn):
+    ''' <PROBLEM>: This method intends to sort the events in General Feed, but does not
+    work as expected. '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
     unsortedPosts = searchPosts(conn)

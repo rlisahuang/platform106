@@ -55,48 +55,6 @@
 </div>
 {% endif %}
 
-
-<!--<table id="posts-list">-->
-<!--    <tr>-->
-<!--        <th>Title</th>-->
-<!--        <th>Location</th>-->
-<!--        <th>Date</th>-->
-<!--        <th>Time</th>-->
-<!--        <th>Tags</th>-->
-<!--        <th>Author</th>-->
-<!--        {% if logged_in %}-->
-<!--        <th>Star Status</th>-->
-<!--        {% endif %}-->
-<!--    </tr>-->
-<!--    {% if featuredEvents %}-->
-<!--    {% for post in featuredEvents %}-->
-<!--    <tr data-pid={{ post.pid }}>-->
-<!--        <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td> -->
-<!--        <td class="location">{{ post.location }}</td>-->
-<!--        <td class="event_date">{{ post.event_date }}</td>-->
-<!--        <td class="event_time">{{ post.event_time }}</td>-->
-<!--        <td class="tags">-->
-<!--            {% for tag in post.tags %}-->
-<!--            <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> -->
-<!--            {% endfor %}-->
-<!--        </td>-->
-<!--        <td class="post_author">{{ post.author }}</td>-->
-<!--        <td>-->
-<!--            {% if logged_in %}-->
-<!--            <form method="post" action="{{ url_for('starAjax') }}">-->
-<!--                <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ post.pid }}"></label>-->
-<!--                <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ post.starred }}"></label>-->
-<!--                <label class ="star-event">-->
-<!--                    <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred == '1' else 'Star the Event'}}">-->
-<!--                </label>-->
-<!--            </form>-->
-<!--            {% endif %}-->
-<!--        </td>-->
-<!--    </tr>-->
-<!--    {% endfor %}-->
-<!--    {% endif %}-->
-<!--</table>-->
-
 {% endblock %}
 
 {% block jquery_scripts %}
