@@ -24,6 +24,7 @@
             <h1 class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></h1>
             
             <p class="location"><b>Location: </b>{{ post.location }}</p>
+            <!--This code uses jinja to highlight dates in red for events happening tomorrow.-->
             {% if post.tomorrow == "1" %}
                 <p class="event_date"><font color = "red"><b>Date: </b>{{ post.event_date }}</font></p>
             {% else %}

@@ -569,6 +569,8 @@ def starAjax():
         usrEmail = info.getUserEmail(conn, usr)
         print(usrEmail)
     
+        # Users cannot see the starring feature if they are not logged in, so it is redundant to add an additional if condition here.
+
         print(starred)
         print(type(starred))
         if starred == "0":
@@ -593,7 +595,7 @@ def followAjax():
         usrPhone = info.getUserPhone(conn, usr)
         usrEmail = info.getUserEmail(conn, usr)
     
-
+        # Users cannot see the follow feature if they are not logged in, so it is redundant to add an additional if condition here.
         if followed == "0":
             print(tid)
             print(usr)

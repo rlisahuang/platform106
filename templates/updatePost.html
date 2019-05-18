@@ -34,6 +34,8 @@
     </form>
 {% endblock %}
 {% block jquery_scripts %}
+<!--This is to restrict the user from choosing dates that are in the past.-->
+<!--The minimum date they can choose is today.-->
 <script>
     var now = new Date(),
     minDate = now.toISOString().substring(0,10);
