@@ -107,7 +107,7 @@ def updatePost(conn, pid, title, content, location, imagefile, event_time, event
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
     
-    curs.execute("""LOCK TABLES tags WRITE, tagged WRITE""")
+    
     for tag in oldtags:
         curs.execute('''DELETE t1
                         FROM tagged t1
@@ -116,6 +116,7 @@ def updatePost(conn, pid, title, content, location, imagefile, event_time, event
                         where t1.pid = %s and t2.tag_name = %s''',[pid,tag])
         conn.commit()
     
+    curs.execute("""LOCK TABLES tags WRITE, tagged WRITE""")
     for tag in newtags:
         if tag != "":
             curs.execute("""select tid from tags where tag_name = %s""", [tag])
