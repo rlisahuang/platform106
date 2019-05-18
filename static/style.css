@@ -1,10 +1,10 @@
 body {
-    font-family: Tahoma;
+    font-family: Sans-Serif;
 }
 
 h1 {
     color: navy;
-    font-family: Tahoma;
+    font-family: Sans-Serif;
     margin: 5px;
 }
 
@@ -135,9 +135,27 @@ img.cardimg {
   vertical-align: middle;
 }
 
-
-
 .title {
   color: navy;
   font-size: 18px;
+}
+
+/*FAQS*/
+
+.faq {
+  padding: 5px;
+}
+
+.faq_question {
+    margin: 0px;
+    padding: 0px 0px 5px 0px;
+    display: inline-block;
+    cursor: pointer;
+    font-weight: bold;
+}
+ 
+.faq_answer_container {
+    height: 0px;
+    overflow: hidden;
+    padding: 0px;
 }

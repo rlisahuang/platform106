@@ -7,22 +7,23 @@
     
     <form id="tagsSearch" method="POST" action={{ url_for("tagsSearch") }}>
         <label class="tagsSearch">Search Tags: 
-        <input id="searchtags" placeholder="Enter a tag!" name="searchtags"/>
+        <input id="searchtags" placeholder="Enter a tag!" name="searchtags" onkeyup="myFunction()"/>
         </label>
         <button id="searchbutton" type="submit" name="submit" value="Search">Search</button>
     </form>
     
     <p>All Tags</p>
-    <table id="tags-list">
+    <!--<p><button onclick="sortTable()">Sort</button></p>-->
+    <p><strong>Click the headers to sort the table.</strong></p>
+    <p>The first time you click, the sorting direction is ascending (A to Z).</p>
+    <p>Click again, and the sorting direction will be descending (Z to A):</p>
+    <table id="tags-list"><thead>
         <tr>
+            <!--When a header is clicked, run the sortTable function, with a parameter, 0 for sorting by names, 1 for sorting by country:-->  
             <th>Tag Name</th>
             <th>Number of Posts</th>
             <th>Number of Followers</th>
             <th>Follow Status</th>
-            {% if isAdmin %}
-            <th>Delete Tag</th>
-            {% endif %}
-            
         </tr>
         {% if tags %}
         {% for tag in tags %}
@@ -39,15 +40,6 @@
                     </label>
                 </form>
             </td>
-            {% if isAdmin %}
-            <td>
-                <form method="post" action="{{ url_for('deleteTag',tid=tag.tid) }}">
-                    <label class = "delete-tag">
-                        <input type="submit" name="delete-tag" value="Delete">
-                    </label>
-                </form>
-            </td>
-            {% endif %}
         </tr>
         {% endfor %}
         {% endif %}
@@ -57,8 +49,64 @@
 {% endblock %}
 
 {% block jquery_scripts %}
-<script src="{{url_for('static',filename='followTag.js')}}"></script>
 <script>
-var follow_URL = "{{ url_for('followAjax') }}";
- </script>
+    var URL = "{{ url_for('followAjax') }}";
+    
+    $("label.follow-tag").on("click", function (event) {
+        event.preventDefault();
+        var followed = $(event.target).closest("form").find("input[name='followed']").val();
+        console.log("follow: " + followed);
+        var tid = $(event.target).closest("form").find("input[name='tid']").val();
+        var button = $(this).find("input[name=follow-tag]");
+        sendFollow(tid,followed,button);
+    });
+    
+    function sendFollow(tid,followed,button) {
+        console.log("Sending "+tid +" and " + followed +" to the back end");
+        $.post(URL,{'error':false, 'tid': tid, 'followed': followed},
+        function(data,status){
+            updateFollow(data,button);
+        },'json');
+    }
+    
+    function updateFollow(obj,button) {
+        console.log(obj);
+        if(obj.error) {
+            // $("#errors").empty().html('Error: '+obj.err);
+            alert(obj.err);
+        } else {
+            console.log("changing follow status to be " + obj.followed)
+            if (obj.followed == "1") {
+                button.val('Followed -- Click to unfollow');
+            } else {
+                button.val('Follow the Tag');
+            }
+            button.closest("form").find("input[name=followed]").val(obj.followed);
+            button.closest("[data-tid]").find(".num_followers").text(obj.numFollows);
+        }
+    }
+    
+</script>
+
+<script>
+function myFunction() {
+  var input, filter, table, tr, td, i, txtValue;
+  input = document.getElementById("searchtags");
+  filter = input.value.toUpperCase();
+  table = document.getElementById("tags-list");
+  tr = table.getElementsByTagName("tr");
+  for (i = 0; i < tr.length; i++) {
+    td = tr[i].getElementsByTagName("td")[0];
+    if (td) {
+      txtValue = td.textContent || td.innerText;
+      if (txtValue.toUpperCase().indexOf(filter) > -1) {
+        tr[i].style.display = "";
+      } else {
+        tr[i].style.display = "none";
+      }
+    }       
+  }
+}
+</script>
+
 {% endblock %}
