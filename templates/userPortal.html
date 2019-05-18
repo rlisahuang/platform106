@@ -90,50 +90,15 @@
         <p class="location"><b>Location: </b>{{ post.location }}</p>
         <p class="event_date"><b>Date: </b>{{ post.event_date }}</p>
         <p class="event_time"><b>Time: </b>{{ post.event_time }}</p>
-        <p class="tags"><b>Tags: </b>
-            {% for tag in post.tags %}
-            <a href="{{ url_for('searchTag',tag=tag) }}">{{ tag }}</a> 
-            {% endfor %}
-        </p>
-        <p class="post_author"><b>Author: </b>{{ post.author }}</p>
         <p>
-            {% if logged_in %}
-            <form method="post" action="{{ url_for('starAjax') }}">
-                <label class="pid"><input type="hidden" name="pid" class="pid" value="{{ post.pid }}"></label>
-                <label class="starred"><input type="hidden" name="starred" class="starred" value="{{ post.starred }}"></label>
-                <label class ="star-event">
-                    <input type="button" name="star-event" value="{{'Starred -- Click to unstar' if post.starred == '1' else 'Star the Event'}}">
-                </label>
-            </form>
-            {% endif %}
+            <a href="{{ url_for('updatePost',pid=post.pid) }}">
+                    <button class="edit-post" type="button" >Edit the Post</button>
+            </a>
         </p>
     </div>
 </div>
 {% endfor %}
 </div>
-
-    <!--<table id="created-posts-list">-->
-    <!--    <tr>-->
-    <!--        <th>Title</th>-->
-    <!--        <th>Location</th>-->
-    <!--        <th>Date</th>-->
-    <!--        <th>Time</th>-->
-    <!--        <th>Edit Post</th>-->
-    <!--    </tr>-->
-    <!--    {% for post in posts %}-->
-    <!--    <tr data-pid={{ post.pid }}>-->
-    <!--        <td class="title"><a href="{{ url_for('displayPost',pid=post.pid) }}">{{ post.title }}</a></td> -->
-    <!--        <td class="location">{{ post.location }}</td>-->
-    <!--        <td class="event_date">{{ post.event_date }}</td>-->
-    <!--        <td class="event_time">{{ post.event_time }}</td>-->
-    <!--        <td>-->
-    <!--            <a href="{{ url_for('updatePost',pid=post.pid) }}">-->
-    <!--                <button class="edit-post" type="button" >Edit the Post</button>-->
-    <!--            </a>-->
-    <!--        </td>-->
-    <!--    </tr>-->
-    <!--    {% endfor %}-->
-    <!--</table>-->
 
 {% endblock %}
 

@@ -17,6 +17,9 @@
             <th>Number of Posts</th>
             <th>Number of Followers</th>
             <th>Follow Status</th>
+            {% if isAdmin %}
+            <th>Delete Tag</th>
+            {% endif %}
         </tr>
         {% if tags %}
         {% for tag in tags %}
@@ -33,6 +36,15 @@
                     </label>
                 </form>
             </td>
+            {% if isAdmin %}
+            <td>
+                <form method="post" action="{{ url_for('deleteTag',tid=tag.tid) }}">
+                    <label class = "delete-tag">
+                        <input type="submit" name="delete-tag" value="Delete">
+                    </label>
+                </form>
+            </td>
+            {% endif %}
         </tr>
         {% endfor %}
         {% endif %}
