@@ -11,7 +11,7 @@ The main file of the app.
 from flask import (Flask, render_template, make_response, url_for, request,
                    redirect, flash, session, send_from_directory,jsonify)
 from werkzeug.utils import secure_filename
-from twilio.rest import Client
+# from twilio.rest import Client
 
 
 app = Flask(__name__)
@@ -47,6 +47,20 @@ def home():
         event["starred"] = "0" if starred is None else "1"
     
     return render_template('home.html', title="Home", featuredEvents = featuredEvents, logged_in=session.get('logged_in',False))
+
+@app.route('/FAQ')
+def FAQ():
+    conn = info.getConn('c9')
+    featuredEvents = info.getFeaturedEvents(conn)
+    print (featuredEvents)
+    username = session.get('username')
+
+    for event in featuredEvents:
+        starred = info.isStarred(conn,event['pid'],username)
+        event["starred"] = "0" if starred is None else "1"
+    
+    return render_template('FAQ.html', title="FAQ Page", featuredEvents = featuredEvents, logged_in=session.get('logged_in',False))
+
     
 @app.route('/login/')
 def login():
@@ -258,7 +272,7 @@ def displayPost(pid):
         postInfo["starred"] = "0" if starred is None else "1"
         authorEmail = info.getAuthorEmail(conn, postInfo['author'])
     
-        return render_template('post.html',isAdmin=session.get('admin',False),isAuthor=isAuthor,post=postInfo,logged_in=logged_in)
+        return render_template('post.html',isAdmin=session.get('admin',False), authorEmail = authorEmail, isAuthor=isAuthor, post=postInfo,logged_in=logged_in)
     
     else:
         return render_template('post.html',post=postInfo,logged_in=logged_in)
@@ -297,13 +311,13 @@ def updatePost(pid):
     
     else:
         curs = conn.cursor(MySQLdb.cursors.DictCursor)
-        curs.execute("""select * from twilio_info""")
-        twilio_info = curs.fetchone()
-        account_sid = twilio_info['account_sid']
-        auth_token = twilio_info['auth_token']
-        client = Client(account_sid, auth_token) # text msg client
+        # curs.execute("""select * from twilio_info""")
+        # twilio_info = curs.fetchone()
+        # account_sid = twilio_info['account_sid']
+        # auth_token = twilio_info['auth_token']
+        # client = Client(account_sid, auth_token) # text msg client
         
-        starredBy = info.getSubscriberPhoneNums(conn,pid)
+        # starredBy = info.getSubscriberPhoneNums(conn,pid)
         
         # the delete function, flash message and redirect to home page
         if request.form.get('submit') == 'delete':
@@ -319,7 +333,7 @@ def updatePost(pid):
                 flash("Post ({}) was deleted successfully.".format(pid))
                 print("Post ({}) was deleted successfully.".format(pid))
             
-            for user in starredBy:
+            """for user in starredBy:
                 phoneNum = user['phoneNum']
                 if phoneNum:
                     try:
@@ -329,6 +343,7 @@ def updatePost(pid):
                                     body="The event you starred: {event}, has been deleted.".format(event=post['title']))
                     except Exception as err:
                         print("SMS sent failed to {phoneNum}: {why}".format(phoneNum=phoneNum,why=err))
+                        """
             return redirect(url_for('userPortal'))
        
         # the update function, grab info filled in by the user
@@ -380,7 +395,7 @@ def updatePost(pid):
             info.updatePost(conn,pid, title, content, location, filename,time,date,session.get('username'),oldtags,tags_stripped)
         
             print("Post ({}) was updated successfully.".format(pid))
-            
+            """
             for user in starredBy:
                 phoneNum = user['phoneNum']
                 if phoneNum:
@@ -391,7 +406,7 @@ def updatePost(pid):
                                     body="The event you starred: {event}, has been updated.".format(event=post['title']))
                     except Exception as err:
                         print("SMS sent failed to {phoneNum}: {why}".format(phoneNum=phoneNum,why=err))
-                        
+            """            
             return redirect(url_for('displayPost', pid=pid))
             
                                   
@@ -554,22 +569,17 @@ def starAjax():
         usrEmail = info.getUserEmail(conn, usr)
         print(usrEmail)
     
-        # check if user has updated their profile information
-        if usrPhone is None or usrPhone is "" or usrEmail is None or usrEmail is "":
-            print("Need to update phone number or email in user profile!")
-            return jsonify( {'error': True, 'err': "Need to update phone number or email in user profile!"} )
+        print(starred)
+        print(type(starred))
+        if starred == "0":
+            info.starPost(conn,pid,usr)
+            print("post {} is starred by user {}".format(pid,usr))
+            return jsonify( {'error':False, 'pid': pid, 'starred': "1"} )
         else:
-            print(starred)
-            print(type(starred))
-            if starred == "0":
-                info.starPost(conn,pid,usr)
-                print("post {} is starred by user {}".format(pid,usr))
-                return jsonify( {'error':False, 'pid': pid, 'starred': "1"} )
-            else:
-                
-                info.unstarPost(conn,pid,usr)
-                print("post {} is unstarred by user {}".format(pid,usr))
-                return jsonify( {'error':False, 'pid': pid, 'starred': "0"} )
+            
+            info.unstarPost(conn,pid,usr)
+            print("post {} is unstarred by user {}".format(pid,usr))
+            return jsonify( {'error':False, 'pid': pid, 'starred': "0"} )
 
 """ The route for follow/unfollow tag with ajax """     
 @app.route('/followAjax',methods=['POST'])      
@@ -584,22 +594,17 @@ def followAjax():
         usrEmail = info.getUserEmail(conn, usr)
     
 
-        # check if user has updated their profile information
-        if usrPhone is None or usrPhone is "" or usrEmail is None or usrEmail is "":
-            print("Need to update phone number or email in user profile!")
-            return jsonify( {'error': True, 'err': "Need to update phone number or email in user profile!"} )
+        if followed == "0":
+            print(tid)
+            print(usr)
+            numFollows = info.followTag(conn,tid,usr)['num_followers']
+            print("post {} is followed by user {}".format(tid,usr))
+            return jsonify( {'error':False, 'tid': tid, 'followed': "1", 'numFollows': numFollows} )
         else:
-            if followed == "0":
-                print(tid)
-                print(usr)
-                numFollows = info.followTag(conn,tid,usr)['num_followers']
-                print("post {} is followed by user {}".format(tid,usr))
-                return jsonify( {'error':False, 'tid': tid, 'followed': "1", 'numFollows': numFollows} )
-            else:
-                numFollows = info.unfollowTag(conn,tid,usr)['num_followers']
-                print("post {} is unfollowed by user {}".format(tid,usr))
-                return jsonify( {'error':False, 'tid': tid, 'followed': "0", 'numFollows': numFollows} )
-     
+            numFollows = info.unfollowTag(conn,tid,usr)['num_followers']
+            print("post {} is unfollowed by user {}".format(tid,usr))
+            return jsonify( {'error':False, 'tid': tid, 'followed': "0", 'numFollows': numFollows} )
+ 
             
 """ The route for deleting a tag (ONLY BY ADMIN)"""
 @app.route('/deleteTag/<tid>',methods=['POST'])

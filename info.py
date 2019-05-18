@@ -13,6 +13,7 @@ import MySQLdb
 import time
 import datetime
 import auth
+import operator
 
 def getConn(db):
     # conn = auth.mysqlConnectCNF(db='c9')
@@ -105,7 +106,7 @@ def updatePost(conn, pid, title, content, location, imagefile, event_time, event
     if any old tags are removed and establish new post-tag relationships if given any new tags.
     '''
     curs = conn.cursor(MySQLdb.cursors.DictCursor)
-    
+
     for tag in oldtags:
         curs.execute('''DELETE t1
                         FROM tagged t1
@@ -464,6 +465,13 @@ def isEventDayTomorrow(conn, pid):
         return True
     return False
     
+def sortPosts(conn):
+    curs = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    unsortedPosts = searchPosts(conn)
+    sortedPosts = sorted(unsortedPosts, key=lambda elem: elem['title'].lower)
+    
+    return sortedPosts
     
     
 if __name__ == '__main__':
@@ -488,17 +496,26 @@ if __name__ == '__main__':
     # print(type(time_obj))
     # print(str(time_obj)[:5])
 
-    n = readOnePost(conn,1)
-    print(n)
-    curs.execute("""select event_time,event_date from posts where pid = 16""")
-    datetime_db = curs.fetchone()
+    # n = readOnePost(conn,1)
+    # print(n)
+    # curs.execute("""select event_time,event_date from posts where pid = 16""")
+    # datetime_db = curs.fetchone()
     # print(type(datetime_db['event_time']))
     # print(datetime_db['event_time'])
     # print(type(datetime_db['event_date']))
-    print("event date is ")
-    print(datetime_db['event_date'])
-    print("today's date is ")
-    print(datetime.date.today())
-    print("tomorrow's date is ")
-    print(datetime.date.today()+datetime.timedelta(days=1))
-    print(datetime_db['event_date'] == datetime.date.today()+datetime.timedelta(days=1))
+    # print("event date is ")
+    # print(datetime_db['event_date'])
+    # print("today's date is ")
+    # print(datetime.date.today())
+    # print("tomorrow's date is ")
+    # print(datetime.date.today()+datetime.timedelta(days=1))
+    # print(datetime_db['event_date'] == datetime.date.today()+datetime.timedelta(days=1))
+    
+    curs.execute('''select pid,title from posts''')
+    posts = curs.fetchall()
+    # print(posts)
+    unsortedPosts = [{'pid': 1, 'title': 'c'}, {'pid': 2, 'title': 'b'}, {'pid': 3, 'title': 'a'}]
+    print(type(unsortedPosts))
+    print(posts)
+    sortedPosts = sorted(posts, key=lambda elem: elem['title'].lower())
+    print(sortedPosts)
